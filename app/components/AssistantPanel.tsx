@@ -101,7 +101,7 @@ export function AssistantPanel({ profile, houses, onClose }: AssistantPanelProps
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: "100%", opacity: 0 }}
       transition={{ type: "spring", bounce: 0.08, duration: 0.5 }}
-      className="fixed inset-y-0 right-0 z-[70] flex w-full max-w-xl flex-col border-l border-zinc-200 bg-white shadow-2xl"
+      className="fixed inset-y-0 right-0 z-[70] flex w-full max-w-full min-w-0 flex-col overflow-x-hidden border-l border-zinc-200 bg-white shadow-2xl sm:max-w-xl"
       aria-label="HouseRank AI assistant"
     >
       <header className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">

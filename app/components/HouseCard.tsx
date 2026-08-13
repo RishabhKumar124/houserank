@@ -19,7 +19,7 @@ export function HouseCard({ house, score, index, formatMoney, openHouse, toggleF
   return (
     <motion.article 
       whileHover={{ y: -4 }}
-      className={`group bg-white rounded-3xl border overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col ${isSelected ? 'border-zinc-900 ring-1 ring-zinc-900' : 'border-zinc-200/60'}`}
+      className={`group flex min-w-0 max-w-full flex-col overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-300 hover:shadow-xl sm:rounded-3xl ${isSelected ? 'border-zinc-900 ring-1 ring-zinc-900' : 'border-zinc-200/60'}`}
     >
       <button onClick={() => openHouse(house.id)} className="w-full text-left flex-1 flex flex-col focus:outline-none">
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-100">
@@ -36,11 +36,11 @@ export function HouseCard({ house, score, index, formatMoney, openHouse, toggleF
           </div>
         </div>
         
-        <div className="p-5 flex-1 flex flex-col">
-          <h3 className="font-semibold text-zinc-900 leading-tight mb-3 line-clamp-1">{house.address}</h3>
+        <div className="flex min-w-0 flex-1 flex-col p-4 sm:p-5">
+          <h3 className="mb-3 line-clamp-2 break-words font-semibold leading-tight text-zinc-900">{house.address}</h3>
           
-          <div className="flex items-center gap-4 text-sm text-zinc-600 mb-4">
-            <span className="flex items-center gap-1.5 font-medium text-zinc-900">
+          <div className="mb-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-sm text-zinc-600">
+            <span className="flex min-w-0 items-center gap-1.5 font-medium text-zinc-900">
               <Home size={14} className="text-zinc-400" />
               {house.price ? formatMoney(house.price) : "?"}
             </span>
@@ -66,8 +66,8 @@ export function HouseCard({ house, score, index, formatMoney, openHouse, toggleF
         </div>
       </button>
 
-      <div className="px-3 pb-3 pt-0 flex items-center justify-between gap-1 border-t border-zinc-50 bg-zinc-50/50">
-        <div className="flex gap-1 mt-2">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-1 border-t border-zinc-50 bg-zinc-50/50 px-2 pb-2 pt-0 sm:px-3 sm:pb-3">
+        <div className="mt-2 flex min-w-0 gap-0.5 sm:gap-1">
           <button onClick={() => toggleFavorite(house.id)} className={`p-2.5 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1 ${house.favorite ? 'text-rose-500 bg-rose-50 hover:bg-rose-100' : 'text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200/50'}`} aria-label={house.favorite ? "Remove from favorites" : "Save as favorite"}>
             <Heart size={16} fill={house.favorite ? "currentColor" : "none"} />
           </button>
@@ -78,7 +78,7 @@ export function HouseCard({ house, score, index, formatMoney, openHouse, toggleF
             <ClipboardCheck size={16} />
           </button>
         </div>
-        <div className="flex gap-1 mt-2">
+        <div className="mt-2 flex min-w-0 gap-0.5 sm:gap-1">
           {house.url && (
             <a href={house.url} target="_blank" rel="noreferrer" aria-label={`Open original listing for ${house.address}`} className="p-2.5 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200/50 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1">
               <ExternalLink size={16} />

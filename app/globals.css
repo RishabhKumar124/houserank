@@ -24,12 +24,18 @@
 
 html {
   min-height: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   background: var(--app);
 }
 
 body {
   min-height: 100%;
+  width: 100%;
+  max-width: 100%;
   margin: 0;
+  overflow-x: hidden;
   background: var(--app);
   color: var(--ink);
   font-family:
@@ -58,7 +64,15 @@ button,
 input,
 textarea,
 select {
+  min-width: 0;
+  max-width: 100%;
   font: inherit;
+}
+
+input,
+textarea,
+select {
+  font-size: 16px;
 }
 
 button {
@@ -68,6 +82,32 @@ button {
 img {
   display: block;
   max-width: 100%;
+}
+
+.app-root,
+.app-root main,
+.app-root section,
+.app-root article,
+.app-root aside,
+.app-root nav,
+.app-root header,
+.app-root footer,
+.app-root div,
+.app-root form,
+.app-root fieldset,
+.app-root label {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.app-root p,
+.app-root h1,
+.app-root h2,
+.app-root h3,
+.app-root a,
+.app-root span,
+.app-root strong {
+  overflow-wrap: anywhere;
 }
 
 .app-shell {
@@ -1288,11 +1328,24 @@ td {
 }
 
 @media (max-width: 639px) {
+  .mobile-header {
+    padding-left: 12px;
+    padding-right: 8px;
+  }
+
+  .brand-mobile {
+    flex: 1 1 auto;
+  }
+
+  .header-actions {
+    flex: 0 0 auto;
+  }
+
   .mobile-tab-bar {
     position: fixed;
-    right: max(8px, env(safe-area-inset-right));
+    right: max(6px, env(safe-area-inset-right));
     bottom: max(8px, env(safe-area-inset-bottom));
-    left: max(8px, env(safe-area-inset-left));
+    left: max(6px, env(safe-area-inset-left));
     z-index: 45;
     width: auto;
     margin: 0;
@@ -1337,8 +1390,31 @@ td {
   }
 
   .house-sheet {
+    width: 100vw;
+    max-width: 100vw;
     height: 100dvh;
     max-height: 100dvh;
+    overflow-x: hidden;
+  }
+}
+
+@media (max-width: 379px) {
+  .brand-mobile h1 {
+    max-width: 118px;
+    font-size: 0.82rem;
+  }
+
+  .brand-mobile p {
+    display: none;
+  }
+
+  .header-actions > button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .mobile-tab-bar > button {
+    font-size: 0.6rem;
   }
 }
 

@@ -1104,32 +1104,32 @@ export default function HomePage() {
 
   // ===== NEW UI DRIVEN BY FRAMER MOTION & PREMIUM TASTE =====
   return (
-    <div className="min-h-screen bg-zinc-50 text-zinc-900 font-sans selection:bg-zinc-200">
+    <div className="app-root min-h-screen w-full max-w-full overflow-x-clip bg-zinc-50 text-zinc-900 font-sans selection:bg-zinc-200">
       <header className="sticky top-0 z-40 w-full backdrop-blur-xl bg-white/70 border-b border-zinc-200/50">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-zinc-900 text-white flex items-center justify-center shadow-sm">
+        <div className="mobile-header mx-auto flex min-h-16 w-full max-w-6xl items-center justify-between gap-2 px-4 py-2 md:px-6">
+          <div className="brand-mobile flex min-w-0 items-center gap-2 sm:gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-white shadow-sm">
               <Home size={18} />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-[10px] uppercase tracking-widest font-semibold text-zinc-500 leading-none">HouseRank</p>
-              <h1 className="text-sm font-medium leading-tight">Home Buying Assistant</h1>
+              <h1 className="truncate text-sm font-medium leading-tight">Home Buying Assistant</h1>
             </div>
           </div>
-          <div className="flex items-center gap-1 sm:gap-2">
+          <div className="header-actions flex shrink-0 items-center gap-0.5 sm:gap-2">
             <span className="hidden sm:inline-flex items-center text-xs font-medium text-zinc-500 bg-zinc-100 px-2 py-1 rounded-full mr-2">
               {saveState}
             </span>
-            <button onClick={() => setAssistantOpen(true)} className="flex items-center gap-2 rounded-xl bg-zinc-900 px-3 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2" aria-label="Open HouseRank AI">
+            <button onClick={() => setAssistantOpen(true)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-xs font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 sm:w-auto sm:gap-2 sm:px-3" aria-label="Open HouseRank AI">
               <Sparkles size={16} /> <span className="hidden sm:inline">Ask AI</span>
             </button>
-            <button onClick={installApp} aria-label="Install HouseRank" title="Install HouseRank" className="p-2 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1">
+            <button onClick={installApp} aria-label="Install HouseRank" title="Install HouseRank" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1">
               <Smartphone size={18} />
             </button>
-            <button onClick={() => importInputRef.current?.click()} aria-label="Import backup" title="Import backup" className="p-2 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1">
+            <button onClick={() => importInputRef.current?.click()} aria-label="Import backup" title="Import backup" className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1 min-[380px]:flex">
               <Upload size={18} />
             </button>
-            <button onClick={exportData} aria-label="Export backup" title="Export backup" className="p-2 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1">
+            <button onClick={exportData} aria-label="Export backup" title="Export backup" className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1 min-[380px]:flex">
               <Download size={18} />
             </button>
             <input ref={importInputRef} type="file" accept="application/json" onChange={importData} className="hidden" />
@@ -1140,7 +1140,7 @@ export default function HomePage() {
         <span className="block w-fit max-w-full truncate rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600">{saveState}</span>
       </div>
 
-      <main className="max-w-6xl mx-auto px-4 md:px-6 pt-6 pb-28 sm:py-8">
+      <main className="mx-auto w-full max-w-6xl min-w-0 overflow-x-clip px-3 pb-28 pt-5 min-[380px]:px-4 sm:py-8 md:px-6">
         <nav className="mobile-tab-bar grid grid-cols-4 gap-1 p-1 bg-zinc-100/95 backdrop-blur-md rounded-2xl mb-8 border border-zinc-200/70 shadow-sm" aria-label="HouseRank sections">
           {([
             ["recommendations", Search, "Recommendations", houses.length],
