@@ -31,9 +31,11 @@ test("server-renders the HouseRank app shell", async () => {
   const html = await response.text();
   assert.match(html, /<title>HouseRank<\/title>/i);
   assert.match(html, /Home buying assistant/);
-  assert.match(html, /Suggested from context/);
   assert.match(html, /Safety \+ schools prioritized/);
-  assert.match(html, /Showing score/);
+  assert.match(html, /House recommendations/);
+  assert.match(html, />Saved</);
+  assert.match(html, />Visited</);
+  assert.match(html, />Profile</);
   assert.match(html, /Compare/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Building your site/i);
 });
@@ -50,6 +52,10 @@ test("ships mobile app metadata and no starter dependency", async () => {
   assert.match(manifest, /"share_target"/);
   assert.match(page, /localStorage/);
   assert.match(page, /visitFactors/);
+  assert.match(page, /Suggested from context/);
+  assert.match(page, /Saved favorites/);
+  assert.match(page, /Visited houses & notes/);
+  assert.match(page, /Buyer profile/);
   assert.match(layout, /manifest: "\/manifest\.webmanifest"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   assert.doesNotMatch(page, /_sites-preview|SkeletonPreview/);

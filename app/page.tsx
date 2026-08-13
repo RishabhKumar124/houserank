@@ -12,9 +12,12 @@ import {
   DollarSign,
   Download,
   GraduationCap,
+  Heart,
+  History,
   Home,
-  Link as LinkIcon,
+  ExternalLink,
   MapPin,
+  NotebookPen,
   Plus,
   RefreshCw,
   Save,
@@ -27,9 +30,11 @@ import {
   Target,
   Trash2,
   Upload,
+  UserRound,
   Utensils,
   Volume2,
   Wind,
+  X,
 } from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 
@@ -83,8 +88,13 @@ type House = {
   photo: string;
   notes: string;
   status: HouseStatus;
+  favorite?: boolean;
+  visitedAt?: string;
   criteria: Record<string, number>;
 };
+
+type AppTab = "recommendations" | "saved" | "visited" | "profile";
+type HousePanel = "add" | "details" | "visit" | null;
 
 type Score = {
   total: number;
@@ -120,6 +130,7 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 const STORAGE_KEY = "houserank-local-v2";
+const APP_VERSION = "3";
 const ASSUMED_RATE = 0.067;
 const ASSUMED_TAX_INSURANCE_RATE = 0.0135;
 const DEFAULT_RESERVE_MONTHS = 6;
@@ -174,6 +185,8 @@ const sampleHouses: House[] = [
     notes:
       "Bellevue School District, quiet residential street, pantry, parks nearby, newer HVAC. Verify elementary assignment, street lighting, kitchen exhaust, and stair gate fit.",
     status: "Contender",
+    favorite: true,
+    visitedAt: "2026-08-09",
     criteria: { ...sampleCriteria, schools: 2, neighborhood: 2, kitchen: 1, community: 1 },
   },
   {
@@ -192,6 +205,8 @@ const sampleHouses: House[] = [
     notes:
       "Good price for Bellevue and strong natural light. Some road noise from the back deck during rush hour; verify school boundary and toddler-safe yard.",
     status: "Seen",
+    favorite: false,
+    visitedAt: "2026-08-06",
     criteria: { noise: -1, light: 2, layout: 1, schools: 1, safety: 0, storage: 0 },
   },
   {
@@ -210,6 +225,7 @@ const sampleHouses: House[] = [
     notes:
       "Walkable to parks and shopping, larger layout, strong storage. Slightly above suggested range; verify neighborhood noise after school pickup hours.",
     status: "Touring",
+    favorite: true,
     criteria: { noise: 1, light: 1, smell: 2, storage: 2, outdoor: 1, schools: 2, safety: 1 },
   },
 ];
@@ -884,12 +900,19 @@ export default function HomePage() {
   const [houses, setHouses] = useState<House[]>(sampleHouses);
   const [draft, setDraft] = useState<DraftListing>(emptyDraft);
   const [selectedId, setSelectedId] = useState(sampleHouses[0].id);
-  const [activeStatus, setActiveStatus] = useState<HouseStatus | "All">("All");
+  const [activeTab, setActiveTab] = useState<AppTab>("recommendations");
+  const [housePanel, setHousePanel] = useState<HousePanel>(null);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [saveState, setSaveState] = useState("Saved locally");
   const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const cachedVersion = window.localStorage.getItem("houserank-app-version");
+    if (cachedVersion !== APP_VERSION && "caches" in window) {
+      window.localStorage.setItem("houserank-app-version", APP_VERSION);
+      window.caches.keys().then((keys) => Promise.all(keys.map((key) => window.caches.delete(key))));
+    }
+
     const hydrateLocalState = window.setTimeout(() => {
       const saved = window.localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -944,13 +967,15 @@ export default function HomePage() {
   }, [profile, houses, selectedId]);
 
   const scoredHouses = useMemo(
-    () =>
-      houses
-        .map((house) => ({ house, score: scoreHouse(house, profile) }))
-        .filter(({ house }) => activeStatus === "All" || house.status === activeStatus)
-        .sort((a, b) => b.score.total - a.score.total),
-    [activeStatus, houses, profile]
+    () => houses.map((house) => ({ house, score: scoreHouse(house, profile) })).sort((a, b) => b.score.total - a.score.total),
+    [houses, profile]
   );
+
+  const visibleHouses = useMemo(() => {
+    if (activeTab === "saved") return scoredHouses.filter(({ house }) => house.favorite);
+    if (activeTab === "visited") return scoredHouses.filter(({ house }) => house.visitedAt);
+    return scoredHouses;
+  }, [activeTab, scoredHouses]);
 
   const selectedHouse = houses.find((house) => house.id === selectedId) ?? houses[0];
   const selectedScore = selectedHouse ? scoreHouse(selectedHouse, profile) : null;
@@ -1013,12 +1038,37 @@ export default function HomePage() {
         "https://images.unsplash.com/photo-1605276374104-dee2a0ed3cd6?auto=format&fit=crop&w=900&q=80",
       notes: draft.notes.trim(),
       status: "Saved",
+      favorite: true,
       criteria: {},
     };
     setHouses((current) => [next, ...current]);
     setSelectedId(next.id);
     setDraft(emptyDraft);
+    setActiveTab("saved");
+    setHousePanel("details");
     setSaveState("Listing added");
+  }
+
+  function openHouse(id: string, panel: Exclude<HousePanel, "add" | null> = "details") {
+    setSelectedId(id);
+    setHousePanel(panel);
+  }
+
+  function toggleFavorite(id: string) {
+    setHouses((current) => current.map((house) => house.id === id ? { ...house, favorite: !house.favorite } : house));
+    setSaveState("Favorites updated");
+  }
+
+  function markVisited(id: string) {
+    setHouses((current) => current.map((house) => house.id === id ? {
+      ...house,
+      visitedAt: house.visitedAt || new Date().toISOString().slice(0, 10),
+      status: house.status === "Saved" ? "Seen" : house.status,
+    } : house));
+    setSelectedId(id);
+    setActiveTab("visited");
+    setHousePanel("visit");
+    setSaveState("Visit started");
   }
 
   function deleteHouse(id: string) {
@@ -1126,7 +1176,30 @@ export default function HomePage() {
         </div>
       </header>
 
-      <section className="summary-strip" aria-label="Best match summary">
+      <nav className="app-tabs" aria-label="HouseRank sections">
+        {([
+          ["recommendations", Search, "Recommendations", houses.length],
+          ["saved", Heart, "Saved", houses.filter((house) => house.favorite).length],
+          ["visited", History, "Visited", houses.filter((house) => house.visitedAt).length],
+          ["profile", UserRound, "Profile", null],
+        ] as const).map(([tab, Icon, label, count]) => (
+          <button
+            className={activeTab === tab ? "app-tab active" : "app-tab"}
+            key={tab}
+            type="button"
+            onClick={() => {
+              setActiveTab(tab);
+              setHousePanel(null);
+            }}
+          >
+            <Icon size={18} />
+            <span>{label}</span>
+            {count !== null ? <small>{count}</small> : null}
+          </button>
+        ))}
+      </nav>
+
+      {activeTab === "recommendations" ? <section className="summary-strip" aria-label="Best match summary">
         <div className="summary-score">
           <span>{best?.score.total ?? 0}</span>
           <div>
@@ -1146,13 +1219,13 @@ export default function HomePage() {
           <Search size={18} />
           <span>{houses.length} homes tracked</span>
         </div>
-      </section>
+      </section> : null}
 
-      <section className="workspace">
-        <aside className="profile-panel" aria-label="Buyer profile">
+      <section className={activeTab === "profile" ? "workspace profile-workspace" : `workspace house-workspace ${housePanel && housePanel !== "add" ? "has-drawer" : ""}`}>
+        {activeTab === "profile" ? <aside className="profile-panel" aria-label="Buyer profile">
           <div className="section-heading">
             <SlidersHorizontal size={18} />
-            <h2>Profile</h2>
+            <h2>Buyer profile</h2>
           </div>
 
           <section className="recommendation-card" aria-label="Suggested buyer profile">
@@ -1374,15 +1447,29 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-        </aside>
+        </aside> : null}
 
-        <section className="listing-panel" aria-label="Listings">
-          <div className="section-heading">
-            <LinkIcon size={18} />
-            <h2>Add listing</h2>
+        {activeTab !== "profile" ? <section className="listing-panel" aria-label={`${activeTab} homes`}>
+          <div className="page-heading">
+            <div>
+              <p className="eyebrow">{activeTab === "recommendations" ? "Ranked for your family" : activeTab === "saved" ? "Your shortlist" : "Tour history"}</p>
+              <h2>{activeTab === "recommendations" ? "House recommendations" : activeTab === "saved" ? "Saved favorites" : "Visited houses & notes"}</h2>
+              <p>{activeTab === "recommendations" ? "Every home ranked against your budget, safety, school, and family priorities." : activeTab === "saved" ? "The homes worth keeping close as your search narrows." : "What you noticed in person, with your visit score and notes."}</p>
+            </div>
+            <button className="primary-button" type="button" onClick={() => setHousePanel("add")}>
+              <Plus size={18} />
+              Add home
+            </button>
           </div>
 
-          <div className="add-listing">
+          {housePanel === "add" ? <div className="add-listing add-listing-panel">
+            <div className="form-heading">
+              <div>
+                <p className="eyebrow">New home</p>
+                <h3>Paste a listing or enter the details</h3>
+              </div>
+              <AppIconButton label="Close add home" onClick={() => setHousePanel(null)}><X size={18} /></AppIconButton>
+            </div>
             <label className="wide">
               <span>Listing link</span>
               <input
@@ -1496,23 +1583,15 @@ export default function HomePage() {
               <Plus size={18} />
               Add home
             </button>
-          </div>
+          </div> : null}
 
-          <div className="filter-row" aria-label="Status filter">
-            {(["All", ...statusOptions] as const).map((status) => (
-              <button
-                className={activeStatus === status ? "chip active" : "chip"}
-                key={status}
-                type="button"
-                onClick={() => setActiveStatus(status)}
-              >
-                {status}
-              </button>
-            ))}
+          <div className="list-summary">
+            <span>{visibleHouses.length} {visibleHouses.length === 1 ? "home" : "homes"}</span>
+            <span>Sorted by match score</span>
           </div>
 
           <div className="listing-stack">
-            {scoredHouses.map(({ house, score }, index) => (
+            {visibleHouses.map(({ house, score }, index) => (
               <article
                 className={house.id === selectedId ? "house-card selected" : "house-card"}
                 key={house.id}
@@ -1520,7 +1599,7 @@ export default function HomePage() {
                 <button
                   className="house-main"
                   type="button"
-                  onClick={() => setSelectedId(house.id)}
+                  onClick={() => openHouse(house.id, "details")}
                   aria-label={`Select ${house.address}`}
                 >
                   <img src={house.photo} alt="" />
@@ -1571,21 +1650,22 @@ export default function HomePage() {
                 </button>
 
                 <div className="house-actions">
-                  <select
-                    aria-label={`Status for ${house.address}`}
-                    value={house.status}
-                    onChange={(event) =>
-                      updateHouse(house.id, { status: event.target.value as HouseStatus })
-                    }
-                  >
-                    {statusOptions.map((status) => (
-                      <option key={status}>{status}</option>
-                    ))}
-                  </select>
+                  <button className={house.favorite ? "action-button favorite" : "action-button"} type="button" onClick={() => toggleFavorite(house.id)}>
+                    <Heart size={16} fill={house.favorite ? "currentColor" : "none"} />
+                    {house.favorite ? "Saved" : "Save"}
+                  </button>
+                  <button className="action-button" type="button" onClick={() => openHouse(house.id, "details")}>
+                    <NotebookPen size={16} />
+                    Notes
+                  </button>
+                  <button className="action-button" type="button" onClick={() => markVisited(house.id)}>
+                    <ClipboardCheck size={16} />
+                    {house.visitedAt ? "Score visit" : "Mark visited"}
+                  </button>
                   {house.url ? (
-                    <a className="small-link" href={house.url} target="_blank" rel="noreferrer">
-                      <LinkIcon size={15} />
-                      Open
+                    <a className="action-button" href={house.url} target="_blank" rel="noreferrer">
+                      <ExternalLink size={15} />
+                      Listing
                     </a>
                   ) : null}
                   <AppIconButton label={`Delete ${house.address}`} onClick={() => deleteHouse(house.id)}>
@@ -1594,20 +1674,31 @@ export default function HomePage() {
                 </div>
               </article>
             ))}
+            {visibleHouses.length === 0 ? (
+              <div className="empty-state">
+                {activeTab === "saved" ? <Heart size={28} /> : <History size={28} />}
+                <h2>{activeTab === "saved" ? "No saved homes yet" : "No visits recorded yet"}</h2>
+                <p>{activeTab === "saved" ? "Save a recommendation or add a listing to build your shortlist." : "Mark any home as visited to capture notes and score how it felt."}</p>
+                <button className="primary-button" type="button" onClick={() => setHousePanel("add")}><Plus size={18} />Add home</button>
+              </div>
+            ) : null}
           </div>
-        </section>
+        </section> : null}
 
-        <aside className="visit-panel" aria-label="Visit scoring">
+        {activeTab !== "profile" && housePanel && housePanel !== "add" ? <aside className="visit-panel" aria-label="House notes and visit scoring">
           {selectedHouse && selectedScore ? (
             <>
               <div className="visit-header">
                 <div>
-                  <p className="eyebrow">Showing score</p>
+                  <p className="eyebrow">{housePanel === "visit" ? "Visit score" : "House details"}</p>
                   <h2>{selectedHouse.address}</h2>
                 </div>
-                <div className="big-score">
-                  <strong>{selectedScore.total}</strong>
-                  <span>{selectedScore.label}</span>
+                <div className="visit-header-actions">
+                  <div className="big-score">
+                    <strong>{selectedScore.total}</strong>
+                    <span>{selectedScore.label}</span>
+                  </div>
+                  <AppIconButton label="Close house details" onClick={() => setHousePanel(null)}><X size={18} /></AppIconButton>
                 </div>
               </div>
 
@@ -1638,6 +1729,12 @@ export default function HomePage() {
               </div>
 
               <div className="edit-fields">
+                <label>
+                  <span>Status</span>
+                  <select value={selectedHouse.status} onChange={(event) => updateHouse(selectedHouse.id, { status: event.target.value as HouseStatus })}>
+                    {statusOptions.map((status) => <option key={status}>{status}</option>)}
+                  </select>
+                </label>
                 <label>
                   <span>Price</span>
                   <input
@@ -1670,7 +1767,7 @@ export default function HomePage() {
                   />
                 </label>
                 <label className="full">
-                  <span>Tour notes</span>
+                  <span>{selectedHouse.visitedAt ? "Visit notes" : "House notes"}</span>
                   <textarea
                     rows={4}
                     value={selectedHouse.notes}
@@ -1679,6 +1776,13 @@ export default function HomePage() {
                 </label>
               </div>
 
+              {housePanel === "visit" ? <>
+              <div className="visit-section-heading">
+                <div>
+                  <h3>How did it feel in person?</h3>
+                  <p>Tap from -2 to +2. Your answers adjust this home&apos;s score.</p>
+                </div>
+              </div>
               <div className="criteria-list">
                 {visitFactors.map((factor) => {
                   const Icon = factor.icon;
@@ -1709,6 +1813,12 @@ export default function HomePage() {
                   );
                 })}
               </div>
+              </> : (
+                <button className="primary-button wide-button" type="button" onClick={() => markVisited(selectedHouse.id)}>
+                  <ClipboardCheck size={18} />
+                  {selectedHouse.visitedAt ? "Open visit score" : "Mark visited and score"}
+                </button>
+              )}
             </>
           ) : (
             <div className="empty-state">
@@ -1716,10 +1826,10 @@ export default function HomePage() {
               <h2>No selected home</h2>
             </div>
           )}
-        </aside>
+        </aside> : null}
       </section>
 
-      <section className="compare-section" aria-label="Comparison table">
+      {activeTab === "recommendations" ? <section className="compare-section" aria-label="Comparison table">
         <div className="section-heading">
           <ClipboardCheck size={18} />
           <h2>Compare</h2>
@@ -1762,9 +1872,9 @@ export default function HomePage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </section> : null}
 
-      <section className="roadmap-section" aria-label="Connector plan">
+      {activeTab === "profile" ? <section className="roadmap-section" aria-label="Connector plan">
         <div className="roadmap-card">
           <RefreshCw size={18} />
           <div>
@@ -1774,7 +1884,7 @@ export default function HomePage() {
             </p>
           </div>
         </div>
-      </section>
+      </section> : null}
     </main>
   );
 }
