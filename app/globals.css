@@ -42,6 +42,18 @@ body {
     sans-serif;
 }
 
+body:has(.house-sheet) {
+  overflow: hidden;
+}
+
+.mobile-tab-bar {
+  width: fit-content;
+}
+
+.tab-label-mobile {
+  display: none;
+}
+
 button,
 input,
 textarea,
@@ -1272,6 +1284,61 @@ td {
 
   .recommendation-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 639px) {
+  .mobile-tab-bar {
+    position: fixed;
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: max(8px, env(safe-area-inset-left));
+    z-index: 45;
+    width: auto;
+    margin: 0;
+    border-radius: 12px;
+    box-shadow: 0 12px 38px rgba(24, 33, 47, 0.2);
+  }
+
+  .mobile-tab-bar > button {
+    min-height: 56px;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+    padding: 5px 2px;
+    font-size: 0.64rem;
+  }
+
+  .mobile-tab-bar > button > span {
+    width: 100%;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .mobile-tab-bar .tab-label {
+    display: block;
+    width: 100%;
+    text-align: center;
+  }
+
+  .mobile-tab-bar .tab-label-desktop {
+    display: none;
+  }
+
+  .mobile-tab-bar .tab-label-mobile {
+    display: block;
+  }
+
+  .mobile-tab-bar small,
+  .mobile-tab-bar span > span:last-child:not(.tab-label) {
+    position: absolute;
+    top: 0;
+    right: 7px;
+  }
+
+  .house-sheet {
+    height: 100dvh;
+    max-height: 100dvh;
   }
 }
 

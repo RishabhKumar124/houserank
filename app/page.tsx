@@ -1,40 +1,38 @@
 "use client";
+import { motion, AnimatePresence } from "framer-motion";
+import { ProfileTab } from "./components/tabs/ProfileTab";
+import { RecommendationsTab } from "./components/tabs/RecommendationsTab";
+import { SavedTab } from "./components/tabs/SavedTab";
+import { VisitedTab } from "./components/tabs/VisitedTab";
+import { AddHousePanel, HouseDetailPanel } from "./components/HousePanels";
+import { AssistantPanel } from "./components/AssistantPanel";
+
 
 import {
   AlertTriangle,
   Baby,
-  Bath,
-  BedDouble,
-  Calculator,
   Car,
   CheckCircle2,
   ClipboardCheck,
-  DollarSign,
   Download,
   GraduationCap,
   Heart,
   History,
   Home,
-  ExternalLink,
   MapPin,
-  NotebookPen,
-  Plus,
-  RefreshCw,
   Save,
   Search,
   ShieldCheck,
   SlidersHorizontal,
   Smartphone,
+  Sparkles,
   Star,
   Sun,
-  Target,
-  Trash2,
   Upload,
   UserRound,
   Utensils,
   Volume2,
   Wind,
-  X,
 } from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 
@@ -130,7 +128,7 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 const STORAGE_KEY = "houserank-local-v2";
-const APP_VERSION = "3";
+const APP_VERSION = "4";
 const ASSUMED_RATE = 0.067;
 const ASSUMED_TAX_INSURANCE_RATE = 0.0135;
 const DEFAULT_RESERVE_MONTHS = 6;
@@ -569,11 +567,6 @@ function inferAddress(raw: string) {
   }
 }
 
-function formatNumber(value?: number, suffix = "") {
-  if (!value) return "Not set";
-  return `${new Intl.NumberFormat("en-US").format(value)}${suffix}`;
-}
-
 function inferSuggestion(profile: Profile): Suggestion {
   const context = profile.context.toLowerCase();
   const finance = inferredFinance(profile);
@@ -599,7 +592,7 @@ function inferSuggestion(profile: Profile): Suggestion {
   const liquidAssets = savings + stocks * 0.75;
   const reserve = Math.max(grossMonthly * DEFAULT_RESERVE_MONTHS, 95000);
   const cashAvailableForPurchase = Math.max(0, liquidAssets - reserve);
-  const byCash = cashAvailableForPurchase / downPct;
+  const byCash = cashAvailableForPurchase / (downPct + 0.035);
 
   let byIncome = 0;
   if (monthlyBudget > 0) {
@@ -616,23 +609,18 @@ function inferSuggestion(profile: Profile): Suggestion {
     byIncome = low;
   }
 
-  const bellevueMarket = location.toLowerCase().includes("bellevue");
-  const marketFloor = bellevueMarket ? 1650000 : 950000;
-  const paymentComfortMax = byIncome || marketFloor;
+  const paymentComfortMax = byIncome || 950000;
   const liquidityMax = byCash || paymentComfortMax;
-  const blendedMax = Math.max(marketFloor, paymentComfortMax * 0.9);
-  const recommendedMax = Math.round(blendedMax / 25000) * 25000;
-  const safeMax = Math.max(marketFloor, recommendedMax || marketFloor);
-  const minPrice = bellevueMarket
-    ? 1200000
-    : Math.max(900000, Math.round(safeMax * 0.74 / 25000) * 25000);
+  const recommendedMax = Math.min(paymentComfortMax * 0.9, liquidityMax);
+  const safeMax = Math.max(300000, Math.round(recommendedMax / 25000) * 25000);
+  const minPrice = Math.max(250000, Math.round((safeMax * 0.72) / 25000) * 25000);
   const stretchPrice = Math.max(
     safeMax + 50000,
-    Math.round(Math.max(paymentComfortMax, safeMax * 1.12) / 25000) * 25000
+    Math.round(Math.min(paymentComfortMax, liquidityMax * 1.05) / 25000) * 25000
   );
-  const beds = hasChild ? 3 : 2;
-  const baths = hasChild ? 2.5 : 2;
-  const commute = location.toLowerCase().includes("bellevue") ? 30 : 35;
+  const beds = Math.max(toNumber(profile.beds) ?? 0, hasChild ? 3 : 2);
+  const baths = Math.max(toNumber(profile.baths) ?? 0, hasChild ? 2.5 : 2);
+  const commute = toNumber(profile.commute) ?? (location.toLowerCase().includes("bellevue") ? 30 : 35);
 
   const mustHaves = [
     safetyHigh ? "safe residential street" : "comfortable street feel",
@@ -664,8 +652,8 @@ function inferSuggestion(profile: Profile): Suggestion {
       : "Add income to estimate the search band.",
     `${formatMoney(savings)} savings plus a conservative portion of stocks leaves about ${formatMoney(cashAvailableForPurchase)} after a ${DEFAULT_RESERVE_MONTHS}-month reserve.`,
     hasChild
-      ? "A 1-year-old makes safety, school path, daycare route, parks, stairs, and sleep noise primary filters."
-      : "Family context can be used to prioritize neighborhood fit.",
+      ? "Children in the household make safety, school path, care logistics, parks, stairs, and sleep noise primary filters."
+      : "Your context is treated as an individual buyer profile without assuming children or school needs.",
     location.toLowerCase().includes("bellevue")
       ? "Bellevue generally pushes the search toward townhomes or smaller single-family homes unless you stretch budget."
       : "Location drives price band and commute assumptions.",
@@ -816,83 +804,26 @@ function scoreHouse(house: House, profile: Profile): Score {
     (sum, factor) => sum + (house.criteria[factor.id] ?? 0) * factor.weight,
     0
   );
-  const visitDelta = Math.round((weighted / (totalWeight * 2)) * 28);
-  const total = Math.round(clamp(base + visitDelta));
+  const visitDelta = Math.round((weighted / (totalWeight * 2)) * 14);
+  const boundedBase = clamp(base);
+  const boundedFinance = clamp(financeFit);
+  const boundedFamily = clamp(familyFit);
+  let total = Math.round(
+    clamp(boundedBase * 0.55 + boundedFinance * 0.3 + boundedFamily * 0.15 + visitDelta, 0, 98)
+  );
+  if (boundedFinance < 35) total = Math.min(total, 64);
+  else if (boundedFinance < 50) total = Math.min(total, 74);
+  else if (flags.includes("finance stretch")) total = Math.min(total, 79);
 
   return {
-    base: Math.round(clamp(base)),
-    financeFit: Math.round(clamp(financeFit)),
-    familyFit: Math.round(clamp(familyFit)),
+    base: Math.round(boundedBase),
+    financeFit: Math.round(boundedFinance),
+    familyFit: Math.round(boundedFamily),
     visitDelta,
     total,
     label: labelForScore(total),
     flags: [...new Set(flags)].slice(0, 3),
   };
-}
-
-function getPersonalLenses(profile: Profile) {
-  const context = profile.context.toLowerCase();
-  const lenses = [
-    {
-      icon: Volume2,
-      title: "Sleep noise",
-      text: "stand in bedrooms quietly and listen for road, HVAC, neighbors",
-    },
-    {
-      icon: Wind,
-      title: "Air check",
-      text: "notice must, smoke, pet odor, perfume masking, and kitchen exhaust",
-    },
-    {
-      icon: Sun,
-      title: "Light path",
-      text: "check morning and evening rooms, not just staged spaces",
-    },
-  ];
-
-  if (context.includes("indian") || context.includes("cook")) {
-    lenses.push({
-      icon: Utensils,
-      title: "Cooking life",
-      text: "range hood, pantry, spice storage, windows, easy grocery routes",
-    });
-  }
-
-  if (context.includes("baby") || context.includes("girl") || context.includes("child")) {
-    lenses.push({
-      icon: Baby,
-      title: "Baby rhythm",
-      text: "nursery quiet, stair gates, stroller path, daycare and park route",
-    });
-  }
-
-  if (context.includes("parents") || context.includes("family")) {
-    lenses.push({
-      icon: ShieldCheck,
-      title: "Family visits",
-      text: "main-level bath, guest privacy, parking, flexible room use",
-    });
-  }
-
-  return lenses.slice(0, 6);
-}
-
-function AppIconButton({
-  children,
-  label,
-  onClick,
-  className = "",
-}: {
-  children: React.ReactNode;
-  label: string;
-  onClick: () => void;
-  className?: string;
-}) {
-  return (
-    <button className={`icon-button ${className}`} type="button" onClick={onClick} aria-label={label} title={label}>
-      {children}
-    </button>
-  );
 }
 
 export default function HomePage() {
@@ -902,8 +833,11 @@ export default function HomePage() {
   const [selectedId, setSelectedId] = useState(sampleHouses[0].id);
   const [activeTab, setActiveTab] = useState<AppTab>("recommendations");
   const [housePanel, setHousePanel] = useState<HousePanel>(null);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [saveState, setSaveState] = useState("Saved locally");
+  const [hydrated, setHydrated] = useState(false);
+  const [draftError, setDraftError] = useState("");
   const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -913,7 +847,7 @@ export default function HomePage() {
       window.caches.keys().then((keys) => Promise.all(keys.map((key) => window.caches.delete(key))));
     }
 
-    const hydrateLocalState = window.setTimeout(() => {
+    const hydrationTimer = window.setTimeout(() => {
       const saved = window.localStorage.getItem(STORAGE_KEY);
       if (saved) {
         try {
@@ -922,10 +856,10 @@ export default function HomePage() {
             houses?: House[];
             selectedId?: string;
           };
-          if (parsed.profile) setProfile(parsed.profile);
-          if (parsed.houses?.length) {
+          if (parsed.profile) setProfile({ ...defaultProfile, ...parsed.profile });
+          if (Array.isArray(parsed.houses)) {
             setHouses(parsed.houses);
-            setSelectedId(parsed.selectedId ?? parsed.houses[0].id);
+            setSelectedId(parsed.selectedId ?? parsed.houses[0]?.id ?? "");
           }
         } catch {
           window.localStorage.removeItem(STORAGE_KEY);
@@ -941,6 +875,7 @@ export default function HomePage() {
           address: inferAddress(sharedUrl),
         }));
       }
+      setHydrated(true);
     }, 0);
 
     if ("serviceWorker" in navigator) {
@@ -954,17 +889,18 @@ export default function HomePage() {
 
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
     return () => {
-      window.clearTimeout(hydrateLocalState);
+      window.clearTimeout(hydrationTimer);
       window.removeEventListener("beforeinstallprompt", onBeforeInstall);
     };
   }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     window.localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({ profile, houses, selectedId })
     );
-  }, [profile, houses, selectedId]);
+  }, [hydrated, profile, houses, selectedId]);
 
   const scoredHouses = useMemo(
     () => houses.map((house) => ({ house, score: scoreHouse(house, profile) })).sort((a, b) => b.score.total - a.score.total),
@@ -979,8 +915,6 @@ export default function HomePage() {
 
   const selectedHouse = houses.find((house) => house.id === selectedId) ?? houses[0];
   const selectedScore = selectedHouse ? scoreHouse(selectedHouse, profile) : null;
-  const best = scoredHouses[0];
-  const personalLenses = useMemo(() => getPersonalLenses(profile), [profile]);
   const suggestion = useMemo(() => inferSuggestion(profile), [profile]);
 
   function updateProfile(key: keyof Profile, value: string) {
@@ -990,23 +924,17 @@ export default function HomePage() {
   function applySuggestion() {
     setProfile((current) => ({
       ...current,
-      location: suggestion.location,
-      minPrice: String(suggestion.minPrice),
-      maxPrice: String(suggestion.maxPrice),
-      beds: String(suggestion.beds),
-      baths: String(suggestion.baths),
-      commute: String(suggestion.commute),
-      neighborhoods: suggestion.neighborhoods,
-      mustHaves: suggestion.mustHaves,
-      dealBreakers: suggestion.dealBreakers,
-      safetyPriority: suggestion.mustHaves.includes("safe")
-        ? "Very high"
-        : current.safetyPriority,
-      schoolPriority: suggestion.mustHaves.includes("school")
-        ? "Very high"
-        : current.schoolPriority,
+      location: current.location.trim() || suggestion.location,
+      minPrice: current.minPrice.trim() || String(suggestion.minPrice),
+      maxPrice: current.maxPrice.trim() || String(suggestion.maxPrice),
+      beds: current.beds.trim() || String(suggestion.beds),
+      baths: current.baths.trim() || String(suggestion.baths),
+      commute: current.commute.trim() || String(suggestion.commute),
+      neighborhoods: current.neighborhoods.trim() || suggestion.neighborhoods,
+      mustHaves: current.mustHaves.trim() || suggestion.mustHaves,
+      dealBreakers: current.dealBreakers.trim() || suggestion.dealBreakers,
     }));
-    setSaveState("Suggestions applied");
+    setSaveState("Suggestions filled empty fields");
   }
 
   function updateHouse(id: string, patch: Partial<House>) {
@@ -1021,13 +949,27 @@ export default function HomePage() {
 
   function addListing() {
     const url = draft.url.trim();
-    const address = draft.address.trim() || inferAddress(url) || "Untitled listing";
+    const address = draft.address.trim() || inferAddress(url);
+    const price = toNumber(draft.price);
+    if (!address) {
+      setDraftError("Add a property address or a listing link that contains one.");
+      return;
+    }
+    if (!price || price <= 0) {
+      setDraftError("Add a valid asking price greater than $0.");
+      return;
+    }
+    if (url && !/^https?:\/\//i.test(url)) {
+      setDraftError("Listing links must start with http:// or https://.");
+      return;
+    }
+    setDraftError("");
     const next: House = {
       id: `house-${Date.now()}`,
       source: sourceFromUrl(url),
       url,
       address,
-      price: toNumber(draft.price),
+      price,
       beds: toNumber(draft.beds),
       baths: toNumber(draft.baths),
       sqft: toNumber(draft.sqft),
@@ -1072,6 +1014,8 @@ export default function HomePage() {
   }
 
   function deleteHouse(id: string) {
+    const house = houses.find((item) => item.id === id);
+    if (!house || !window.confirm(`Delete ${house.address}? This cannot be undone.`)) return;
     setHouses((current) => {
       const remaining = current.filter((house) => house.id !== id);
       if (!remaining.some((house) => house.id === selectedId)) {
@@ -1079,6 +1023,8 @@ export default function HomePage() {
       }
       return remaining;
     });
+    setHousePanel(null);
+    setSaveState("Home deleted");
   }
 
   function setCriterion(id: string, criterionId: string, value: number) {
@@ -1100,11 +1046,12 @@ export default function HomePage() {
   async function installApp() {
     if (installPrompt) {
       await installPrompt.prompt();
-      await installPrompt.userChoice;
+      const choice = await installPrompt.userChoice;
       setInstallPrompt(null);
+      setSaveState(choice.outcome === "accepted" ? "Install accepted" : "Install dismissed");
       return;
     }
-    window.alert("Open your browser menu and choose Add to Home Screen.");
+    setSaveState("Use your browser menu, then Add to Home Screen");
   }
 
   function exportData() {
@@ -1114,8 +1061,24 @@ export default function HomePage() {
     const link = document.createElement("a");
     link.href = url;
     link.download = `houserank-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setSaveState("Backup downloaded");
+  }
+
+  function isValidBackup(value: unknown): value is { profile: Profile; houses: House[] } {
+    if (!value || typeof value !== "object") return false;
+    const candidate = value as { profile?: unknown; houses?: unknown };
+    if (!candidate.profile || typeof candidate.profile !== "object" || !Array.isArray(candidate.houses)) return false;
+    const profileKeys: (keyof Profile)[] = ["location", "income", "savings", "stocks", "retirement", "monthlyDebt", "downPaymentPct", "safetyPriority", "schoolPriority", "minPrice", "maxPrice", "beds", "baths", "commute", "neighborhoods", "mustHaves", "dealBreakers", "context"];
+    if (!profileKeys.every((key) => typeof (candidate.profile as Record<string, unknown>)[key] === "string")) return false;
+    return candidate.houses.every((house) => {
+      if (!house || typeof house !== "object") return false;
+      const item = house as Record<string, unknown>;
+      return typeof item.id === "string" && typeof item.address === "string" && typeof item.source === "string" && typeof item.notes === "string" && typeof item.criteria === "object";
+    });
   }
 
   function importData(event: ChangeEvent<HTMLInputElement>) {
@@ -1124,767 +1087,159 @@ export default function HomePage() {
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const parsed = JSON.parse(String(reader.result)) as {
-          profile?: Profile;
-          houses?: House[];
-        };
-        if (parsed.profile) setProfile(parsed.profile);
-        if (parsed.houses?.length) {
-          setHouses(parsed.houses);
-          setSelectedId(parsed.houses[0].id);
-        }
-        setSaveState("Imported");
+        const parsed: unknown = JSON.parse(String(reader.result));
+        if (!isValidBackup(parsed)) throw new Error("Invalid backup schema");
+        setProfile(parsed.profile);
+        setHouses(parsed.houses);
+        setSelectedId(parsed.houses[0]?.id ?? "");
+        setHousePanel(null);
+        setSaveState(`Imported ${parsed.houses.length} homes`);
       } catch {
-        window.alert("That backup file could not be read.");
+        setSaveState("Import failed: choose a HouseRank backup");
       }
     };
     reader.readAsText(file);
     event.target.value = "";
   }
 
+  // ===== NEW UI DRIVEN BY FRAMER MOTION & PREMIUM TASTE =====
   return (
-    <main className="app-shell">
-      <header className="topbar">
-        <div className="brand-lockup">
-          <span className="brand-mark">
-            <Home size={20} aria-hidden="true" />
-          </span>
-          <div>
-            <p className="eyebrow">HouseRank</p>
-            <h1>Home buying assistant</h1>
+    <div className="min-h-screen bg-zinc-50 text-zinc-900 font-sans selection:bg-zinc-200">
+      <header className="sticky top-0 z-40 w-full backdrop-blur-xl bg-white/70 border-b border-zinc-200/50">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-zinc-900 text-white flex items-center justify-center shadow-sm">
+              <Home size={18} />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-widest font-semibold text-zinc-500 leading-none">HouseRank</p>
+              <h1 className="text-sm font-medium leading-tight">Home Buying Assistant</h1>
+            </div>
           </div>
-        </div>
-
-        <div className="topbar-actions">
-          <span className="save-pill">{saveState}</span>
-          <AppIconButton label="Install on phone" onClick={installApp}>
-            <Smartphone size={18} />
-          </AppIconButton>
-          <AppIconButton label="Import backup" onClick={() => importInputRef.current?.click()}>
-            <Upload size={18} />
-          </AppIconButton>
-          <AppIconButton label="Export backup" onClick={exportData}>
-            <Download size={18} />
-          </AppIconButton>
-          <input
-            ref={importInputRef}
-            className="visually-hidden"
-            type="file"
-            accept="application/json"
-            onChange={importData}
-          />
+          <div className="flex items-center gap-1 sm:gap-2">
+            <span className="hidden sm:inline-flex items-center text-xs font-medium text-zinc-500 bg-zinc-100 px-2 py-1 rounded-full mr-2">
+              {saveState}
+            </span>
+            <button onClick={() => setAssistantOpen(true)} className="flex items-center gap-2 rounded-xl bg-zinc-900 px-3 py-2 text-xs font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2" aria-label="Open HouseRank AI">
+              <Sparkles size={16} /> <span className="hidden sm:inline">Ask AI</span>
+            </button>
+            <button onClick={installApp} aria-label="Install HouseRank" title="Install HouseRank" className="p-2 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1">
+              <Smartphone size={18} />
+            </button>
+            <button onClick={() => importInputRef.current?.click()} aria-label="Import backup" title="Import backup" className="p-2 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1">
+              <Upload size={18} />
+            </button>
+            <button onClick={exportData} aria-label="Export backup" title="Export backup" className="p-2 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1">
+              <Download size={18} />
+            </button>
+            <input ref={importInputRef} type="file" accept="application/json" onChange={importData} className="hidden" />
+          </div>
         </div>
       </header>
+      <div className="mx-auto max-w-6xl px-4 pt-2 sm:hidden" aria-live="polite">
+        <span className="block w-fit max-w-full truncate rounded-md bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-600">{saveState}</span>
+      </div>
 
-      <nav className="app-tabs" aria-label="HouseRank sections">
-        {([
-          ["recommendations", Search, "Recommendations", houses.length],
-          ["saved", Heart, "Saved", houses.filter((house) => house.favorite).length],
-          ["visited", History, "Visited", houses.filter((house) => house.visitedAt).length],
-          ["profile", UserRound, "Profile", null],
-        ] as const).map(([tab, Icon, label, count]) => (
-          <button
-            className={activeTab === tab ? "app-tab active" : "app-tab"}
-            key={tab}
-            type="button"
-            onClick={() => {
-              setActiveTab(tab);
-              setHousePanel(null);
-            }}
-          >
-            <Icon size={18} />
-            <span>{label}</span>
-            {count !== null ? <small>{count}</small> : null}
-          </button>
-        ))}
-      </nav>
-
-      {activeTab === "recommendations" ? <section className="summary-strip" aria-label="Best match summary">
-        <div className="summary-score">
-          <span>{best?.score.total ?? 0}</span>
-          <div>
-            <strong>{best?.score.label ?? "No listings"}</strong>
-            <p>{best?.house.address ?? "Add a listing to start ranking"}</p>
-          </div>
-        </div>
-        <div className="summary-stat">
-          <DollarSign size={18} />
-          <span>{formatMoney(suggestion.maxPrice)} suggested max</span>
-        </div>
-        <div className="summary-stat">
-          <GraduationCap size={18} />
-          <span>Safety + schools prioritized</span>
-        </div>
-        <div className="summary-stat">
-          <Search size={18} />
-          <span>{houses.length} homes tracked</span>
-        </div>
-      </section> : null}
-
-      <section className={activeTab === "profile" ? "workspace profile-workspace" : `workspace house-workspace ${housePanel && housePanel !== "add" ? "has-drawer" : ""}`}>
-        {activeTab === "profile" ? <aside className="profile-panel" aria-label="Buyer profile">
-          <div className="section-heading">
-            <SlidersHorizontal size={18} />
-            <h2>Buyer profile</h2>
-          </div>
-
-          <section className="recommendation-card" aria-label="Suggested buyer profile">
-            <div className="recommendation-head">
-              <div>
-                <p className="eyebrow">Suggested from context</p>
-                <h3>{suggestion.location}</h3>
-              </div>
-              <button className="secondary-button" type="button" onClick={applySuggestion}>
-                <Target size={16} />
-                Apply
+      <main className="max-w-6xl mx-auto px-4 md:px-6 pt-6 pb-28 sm:py-8">
+        <nav className="mobile-tab-bar grid grid-cols-4 gap-1 p-1 bg-zinc-100/95 backdrop-blur-md rounded-2xl mb-8 border border-zinc-200/70 shadow-sm" aria-label="HouseRank sections">
+          {([
+            ["recommendations", Search, "Recommendations", houses.length],
+            ["saved", Heart, "Saved", houses.filter((h) => h.favorite).length],
+            ["visited", History, "Visited", houses.filter((h) => h.visitedAt).length],
+            ["profile", UserRound, "Profile", null],
+          ] as const).map(([tab, Icon, label, count]) => {
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => { setActiveTab(tab); setHousePanel(null); }}
+                aria-current={isActive ? "page" : undefined}
+                className={`relative flex min-w-0 items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-1 z-10 ${isActive ? 'text-zinc-900' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50'}`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="activeTabIndicator"
+                    className="absolute inset-0 bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.05)] border border-black/[0.04]"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+                <span className="relative flex min-w-0 items-center justify-center gap-2 z-20">
+                  <Icon size={16} className={isActive ? 'text-zinc-900' : 'text-zinc-400'} />
+                  <span className="tab-label tab-label-desktop truncate">{label}</span>
+                  <span className="tab-label tab-label-mobile truncate">{tab === "recommendations" ? "Ranked" : label}</span>
+                  {count !== null && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-zinc-100 text-zinc-900' : 'bg-zinc-200/50 text-zinc-500'}`}>
+                      {count}
+                    </span>
+                  )}
+                </span>
               </button>
-            </div>
-            <div className="recommendation-grid">
-              <div>
-                <span>Search band</span>
-                <strong>
-                  {formatMoney(suggestion.minPrice)} - {formatMoney(suggestion.maxPrice)}
-                </strong>
-              </div>
-              <div>
-                <span>Stretch cap</span>
-                <strong>{formatMoney(suggestion.stretchPrice)}</strong>
-              </div>
-              <div>
-                <span>Target home</span>
-                <strong>
-                  {suggestion.beds}+ bd / {suggestion.baths}+ ba
-                </strong>
-              </div>
-              <div>
-                <span>Cash buffer</span>
-                <strong>{formatMoney(suggestion.cashReserve)}</strong>
-              </div>
-            </div>
-            <p className="recommendation-note">
-              {suggestion.rationale[2]} {suggestion.cautions[2]} {suggestion.cautions[0]}
-            </p>
-          </section>
+            );
+          })}
+        </nav>
 
-          <div className="field-grid two">
-            <label>
-              <span>Location</span>
-              <input
-                value={profile.location}
-                onChange={(event) => updateProfile("location", event.target.value)}
-              />
-            </label>
-            <label>
-              <span>Combined income</span>
-              <input
-                inputMode="numeric"
-                value={profile.income}
-                onChange={(event) => updateProfile("income", event.target.value)}
-              />
-            </label>
-            <label>
-              <span>Savings</span>
-              <input
-                inputMode="numeric"
-                value={profile.savings}
-                onChange={(event) => updateProfile("savings", event.target.value)}
-              />
-            </label>
-            <label>
-              <span>Stocks</span>
-              <input
-                inputMode="numeric"
-                value={profile.stocks}
-                onChange={(event) => updateProfile("stocks", event.target.value)}
-              />
-            </label>
-            <label>
-              <span>Retirement</span>
-              <input
-                inputMode="numeric"
-                value={profile.retirement}
-                onChange={(event) => updateProfile("retirement", event.target.value)}
-              />
-            </label>
-            <label>
-              <span>Monthly debts</span>
-              <input
-                inputMode="numeric"
-                value={profile.monthlyDebt}
-                onChange={(event) => updateProfile("monthlyDebt", event.target.value)}
-              />
-            </label>
-            <label>
-              <span>Down payment %</span>
-              <input
-                inputMode="numeric"
-                value={profile.downPaymentPct}
-                onChange={(event) => updateProfile("downPaymentPct", event.target.value)}
-              />
-            </label>
-            <label>
-              <span>Safety priority</span>
-              <select
-                value={profile.safetyPriority}
-                onChange={(event) => updateProfile("safetyPriority", event.target.value)}
-              >
-                <option>Very high</option>
-                <option>High</option>
-                <option>Normal</option>
-              </select>
-            </label>
-            <label>
-              <span>School priority</span>
-              <select
-                value={profile.schoolPriority}
-                onChange={(event) => updateProfile("schoolPriority", event.target.value)}
-              >
-                <option>Very high</option>
-                <option>High</option>
-                <option>Normal</option>
-              </select>
-            </label>
-          </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ type: "spring", bounce: 0, duration: 0.4 }}
+            className="w-full"
+          >
+            {activeTab === "profile" && <ProfileTab profile={profile} updateProfile={updateProfile} suggestion={suggestion} applySuggestion={applySuggestion} />}
+            {activeTab === "recommendations" && <RecommendationsTab houses={scoredHouses} formatMoney={formatMoney} openHouse={openHouse} toggleFavorite={toggleFavorite} markVisited={markVisited} deleteHouse={deleteHouse} setHousePanel={setHousePanel} selectedId={selectedId} />}
+            {activeTab === "saved" && <SavedTab houses={visibleHouses} formatMoney={formatMoney} openHouse={openHouse} toggleFavorite={toggleFavorite} markVisited={markVisited} deleteHouse={deleteHouse} selectedId={selectedId} />}
+            {activeTab === "visited" && <VisitedTab houses={visibleHouses} formatMoney={formatMoney} openHouse={openHouse} toggleFavorite={toggleFavorite} markVisited={markVisited} deleteHouse={deleteHouse} selectedId={selectedId} />}
+          </motion.div>
+        </AnimatePresence>
 
-          <div className="field-grid two">
-            <label>
-              <span>Min price</span>
-              <input
-                inputMode="numeric"
-                value={profile.minPrice}
-                onChange={(event) => updateProfile("minPrice", event.target.value)}
-              />
-            </label>
-            <label>
-              <span>Max price</span>
-              <input
-                inputMode="numeric"
-                value={profile.maxPrice}
-                onChange={(event) => updateProfile("maxPrice", event.target.value)}
-              />
-            </label>
-            <label>
-              <span>Beds</span>
-              <input
-                inputMode="numeric"
-                value={profile.beds}
-                onChange={(event) => updateProfile("beds", event.target.value)}
-              />
-            </label>
-            <label>
-              <span>Baths</span>
-              <input
-                inputMode="decimal"
-                value={profile.baths}
-                onChange={(event) => updateProfile("baths", event.target.value)}
-              />
-            </label>
-          </div>
-
-          <label>
-            <span>Max commute minutes</span>
-            <input
-              inputMode="numeric"
-              value={profile.commute}
-              onChange={(event) => updateProfile("commute", event.target.value)}
-            />
-          </label>
-
-          <label>
-            <span>Neighborhood notes</span>
-            <textarea
-              rows={3}
-              value={profile.neighborhoods}
-              onChange={(event) => updateProfile("neighborhoods", event.target.value)}
-            />
-          </label>
-
-          <label>
-            <span>Must haves</span>
-            <textarea
-              rows={3}
-              value={profile.mustHaves}
-              onChange={(event) => updateProfile("mustHaves", event.target.value)}
-            />
-          </label>
-
-          <label>
-            <span>Dealbreakers</span>
-            <textarea
-              rows={3}
-              value={profile.dealBreakers}
-              onChange={(event) => updateProfile("dealBreakers", event.target.value)}
-            />
-          </label>
-
-          <label>
-            <span>Context</span>
-            <textarea
-              rows={5}
-              value={profile.context}
-              onChange={(event) => updateProfile("context", event.target.value)}
-            />
-          </label>
-
-          <div className="lens-grid">
-            {personalLenses.map((lens) => {
-              const Icon = lens.icon;
-              return (
-                <article className="lens-card" key={lens.title}>
-                  <Icon size={18} />
-                  <strong>{lens.title}</strong>
-                  <p>{lens.text}</p>
-                </article>
-              );
-            })}
-          </div>
-
-          <div className="rationale-list">
-            {suggestion.rationale.map((item) => (
-              <div className="rationale-item" key={item}>
-                <Calculator size={16} />
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </aside> : null}
-
-        {activeTab !== "profile" ? <section className="listing-panel" aria-label={`${activeTab} homes`}>
-          <div className="page-heading">
-            <div>
-              <p className="eyebrow">{activeTab === "recommendations" ? "Ranked for your family" : activeTab === "saved" ? "Your shortlist" : "Tour history"}</p>
-              <h2>{activeTab === "recommendations" ? "House recommendations" : activeTab === "saved" ? "Saved favorites" : "Visited houses & notes"}</h2>
-              <p>{activeTab === "recommendations" ? "Every home ranked against your budget, safety, school, and family priorities." : activeTab === "saved" ? "The homes worth keeping close as your search narrows." : "What you noticed in person, with your visit score and notes."}</p>
-            </div>
-            <button className="primary-button" type="button" onClick={() => setHousePanel("add")}>
-              <Plus size={18} />
-              Add home
-            </button>
-          </div>
-
-          {housePanel === "add" ? <div className="add-listing add-listing-panel">
-            <div className="form-heading">
-              <div>
-                <p className="eyebrow">New home</p>
-                <h3>Paste a listing or enter the details</h3>
-              </div>
-              <AppIconButton label="Close add home" onClick={() => setHousePanel(null)}><X size={18} /></AppIconButton>
-            </div>
-            <label className="wide">
-              <span>Listing link</span>
-              <input
-                value={draft.url}
-                placeholder="Paste Zillow, Redfin, Realtor, Homes.com..."
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    url: event.target.value,
-                    address: current.address || inferAddress(event.target.value),
-                  }))
-                }
-              />
-            </label>
-            <label>
-              <span>Address</span>
-              <input
-                value={draft.address}
-                onChange={(event) => setDraft((current) => ({ ...current, address: event.target.value }))}
-              />
-            </label>
-            <label>
-              <span>Price</span>
-              <input
-                inputMode="numeric"
-                value={draft.price}
-                onChange={(event) => setDraft((current) => ({ ...current, price: event.target.value }))}
-              />
-            </label>
-            <label>
-              <span>Beds</span>
-              <input
-                inputMode="decimal"
-                value={draft.beds}
-                onChange={(event) => setDraft((current) => ({ ...current, beds: event.target.value }))}
-              />
-            </label>
-            <label>
-              <span>Baths</span>
-              <input
-                inputMode="decimal"
-                value={draft.baths}
-                onChange={(event) => setDraft((current) => ({ ...current, baths: event.target.value }))}
-              />
-            </label>
-            <label>
-              <span>Sq ft</span>
-              <input
-                inputMode="numeric"
-                value={draft.sqft}
-                onChange={(event) => setDraft((current) => ({ ...current, sqft: event.target.value }))}
-              />
-            </label>
-            <label>
-              <span>Commute</span>
-              <input
-                inputMode="numeric"
-                value={draft.commute}
-                onChange={(event) => setDraft((current) => ({ ...current, commute: event.target.value }))}
-              />
-            </label>
-            <label>
-              <span>School fit</span>
-              <select
-                value=""
-                onChange={(event) => {
-                  const value = event.target.value;
-                  if (!value) return;
-                  setDraft((current) => ({
-                    ...current,
-                    notes: `${current.notes}${current.notes ? "\n" : ""}School fit: ${value}`,
-                  }));
-                  event.currentTarget.value = "";
-                }}
-              >
-                <option value="">Add note</option>
-                <option>verify boundary</option>
-                <option>strong Bellevue school path</option>
-                <option>uncertain or weak school fit</option>
-              </select>
-            </label>
-            <label>
-              <span>Street safety</span>
-              <select
-                value=""
-                onChange={(event) => {
-                  const value = event.target.value;
-                  if (!value) return;
-                  setDraft((current) => ({
-                    ...current,
-                    notes: `${current.notes}${current.notes ? "\n" : ""}Street safety: ${value}`,
-                  }));
-                  event.currentTarget.value = "";
-                }}
-              >
-                <option value="">Add note</option>
-                <option>quiet low-traffic street</option>
-                <option>needs night check</option>
-                <option>busy road or safety concern</option>
-              </select>
-            </label>
-            <label className="wide">
-              <span>Notes</span>
-              <textarea
-                rows={2}
-                value={draft.notes}
-                onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
-              />
-            </label>
-            <button className="primary-button" type="button" onClick={addListing}>
-              <Plus size={18} />
-              Add home
-            </button>
-          </div> : null}
-
-          <div className="list-summary">
-            <span>{visibleHouses.length} {visibleHouses.length === 1 ? "home" : "homes"}</span>
-            <span>Sorted by match score</span>
-          </div>
-
-          <div className="listing-stack">
-            {visibleHouses.map(({ house, score }, index) => (
-              <article
-                className={house.id === selectedId ? "house-card selected" : "house-card"}
-                key={house.id}
-              >
-                <button
-                  className="house-main"
-                  type="button"
-                  onClick={() => openHouse(house.id, "details")}
-                  aria-label={`Select ${house.address}`}
-                >
-                  <img src={house.photo} alt="" />
-                  <div className="house-content">
-                    <div className="house-title-row">
-                      <div>
-                        <span className="rank-badge">#{index + 1}</span>
-                        <h3>{house.address}</h3>
-                      </div>
-                      <div className="score-badge">
-                        <strong>{score.total}</strong>
-                        <span>{score.label}</span>
-                      </div>
-                    </div>
-
-                    <div className="house-facts">
-                      <span>
-                        <Home size={15} />
-                        {money.format(house.price ?? 0)}
-                      </span>
-                      <span>
-                        <BedDouble size={15} />
-                        {house.beds ?? "?"}
-                      </span>
-                      <span>
-                        <Bath size={15} />
-                        {house.baths ?? "?"}
-                      </span>
-                      <span>
-                        <Car size={15} />
-                        {house.commute ? `${house.commute} min` : "commute ?"}
-                      </span>
-                    </div>
-
-                    <p>{house.notes || "No notes yet."}</p>
-
-                    <div className="card-footer">
-                      <span>{house.source}</span>
-                      <span>{house.status}</span>
-                      <span>Family {score.familyFit}</span>
-                      <span>Finance {score.financeFit}</span>
-                      <span>Visit {score.visitDelta >= 0 ? "+" : ""}{score.visitDelta}</span>
-                      {score.flags.map((flag) => (
-                        <span className="warning-tag" key={flag}>{flag}</span>
-                      ))}
-                    </div>
-                  </div>
-                </button>
-
-                <div className="house-actions">
-                  <button className={house.favorite ? "action-button favorite" : "action-button"} type="button" onClick={() => toggleFavorite(house.id)}>
-                    <Heart size={16} fill={house.favorite ? "currentColor" : "none"} />
-                    {house.favorite ? "Saved" : "Save"}
-                  </button>
-                  <button className="action-button" type="button" onClick={() => openHouse(house.id, "details")}>
-                    <NotebookPen size={16} />
-                    Notes
-                  </button>
-                  <button className="action-button" type="button" onClick={() => markVisited(house.id)}>
-                    <ClipboardCheck size={16} />
-                    {house.visitedAt ? "Score visit" : "Mark visited"}
-                  </button>
-                  {house.url ? (
-                    <a className="action-button" href={house.url} target="_blank" rel="noreferrer">
-                      <ExternalLink size={15} />
-                      Listing
-                    </a>
-                  ) : null}
-                  <AppIconButton label={`Delete ${house.address}`} onClick={() => deleteHouse(house.id)}>
-                    <Trash2 size={16} />
-                  </AppIconButton>
-                </div>
-              </article>
-            ))}
-            {visibleHouses.length === 0 ? (
-              <div className="empty-state">
-                {activeTab === "saved" ? <Heart size={28} /> : <History size={28} />}
-                <h2>{activeTab === "saved" ? "No saved homes yet" : "No visits recorded yet"}</h2>
-                <p>{activeTab === "saved" ? "Save a recommendation or add a listing to build your shortlist." : "Mark any home as visited to capture notes and score how it felt."}</p>
-                <button className="primary-button" type="button" onClick={() => setHousePanel("add")}><Plus size={18} />Add home</button>
-              </div>
-            ) : null}
-          </div>
-        </section> : null}
-
-        {activeTab !== "profile" && housePanel && housePanel !== "add" ? <aside className="visit-panel" aria-label="House notes and visit scoring">
-          {selectedHouse && selectedScore ? (
+        <AnimatePresence>
+          {housePanel && (
             <>
-              <div className="visit-header">
-                <div>
-                  <p className="eyebrow">{housePanel === "visit" ? "Visit score" : "House details"}</p>
-                  <h2>{selectedHouse.address}</h2>
-                </div>
-                <div className="visit-header-actions">
-                  <div className="big-score">
-                    <strong>{selectedScore.total}</strong>
-                    <span>{selectedScore.label}</span>
-                  </div>
-                  <AppIconButton label="Close house details" onClick={() => setHousePanel(null)}><X size={18} /></AppIconButton>
-                </div>
-              </div>
-
-              <div className="score-bars">
-                <div>
-                  <span>Profile fit</span>
-                  <meter min={0} max={100} value={selectedScore.base} />
-                  <strong>{selectedScore.base}</strong>
-                </div>
-                <div>
-                  <span>Family fit</span>
-                  <meter min={0} max={100} value={selectedScore.familyFit} />
-                  <strong>{selectedScore.familyFit}</strong>
-                </div>
-                <div>
-                  <span>Finance fit</span>
-                  <meter min={0} max={100} value={selectedScore.financeFit} />
-                  <strong>{selectedScore.financeFit}</strong>
-                </div>
-                <div>
-                  <span>Visit feel</span>
-                  <meter min={-28} max={28} value={selectedScore.visitDelta} />
-                  <strong>
-                    {selectedScore.visitDelta >= 0 ? "+" : ""}
-                    {selectedScore.visitDelta}
-                  </strong>
-                </div>
-              </div>
-
-              <div className="edit-fields">
-                <label>
-                  <span>Status</span>
-                  <select value={selectedHouse.status} onChange={(event) => updateHouse(selectedHouse.id, { status: event.target.value as HouseStatus })}>
-                    {statusOptions.map((status) => <option key={status}>{status}</option>)}
-                  </select>
-                </label>
-                <label>
-                  <span>Price</span>
-                  <input
-                    inputMode="numeric"
-                    value={selectedHouse.price ?? ""}
-                    onChange={(event) => updateHouseNumber(selectedHouse.id, "price", event.target.value)}
-                  />
-                </label>
-                <label>
-                  <span>Sq ft</span>
-                  <input
-                    inputMode="numeric"
-                    value={selectedHouse.sqft ?? ""}
-                    onChange={(event) => updateHouseNumber(selectedHouse.id, "sqft", event.target.value)}
-                  />
-                </label>
-                <label>
-                  <span>Year</span>
-                  <input
-                    inputMode="numeric"
-                    value={selectedHouse.year ?? ""}
-                    onChange={(event) => updateHouseNumber(selectedHouse.id, "year", event.target.value)}
-                  />
-                </label>
-                <label>
-                  <span>Photo URL</span>
-                  <input
-                    value={selectedHouse.photo}
-                    onChange={(event) => updateHouse(selectedHouse.id, { photo: event.target.value })}
-                  />
-                </label>
-                <label className="full">
-                  <span>{selectedHouse.visitedAt ? "Visit notes" : "House notes"}</span>
-                  <textarea
-                    rows={4}
-                    value={selectedHouse.notes}
-                    onChange={(event) => updateHouse(selectedHouse.id, { notes: event.target.value })}
-                  />
-                </label>
-              </div>
-
-              {housePanel === "visit" ? <>
-              <div className="visit-section-heading">
-                <div>
-                  <h3>How did it feel in person?</h3>
-                  <p>Tap from -2 to +2. Your answers adjust this home&apos;s score.</p>
-                </div>
-              </div>
-              <div className="criteria-list">
-                {visitFactors.map((factor) => {
-                  const Icon = factor.icon;
-                  const current = selectedHouse.criteria[factor.id] ?? 0;
-                  return (
-                    <div className="criterion" key={factor.id}>
-                      <div className="criterion-copy">
-                        <Icon size={17} />
-                        <div>
-                          <strong>{factor.label}</strong>
-                          <span>{current < 0 ? factor.low : current > 0 ? factor.high : "neutral"}</span>
-                        </div>
-                      </div>
-                      <div className="rating" role="group" aria-label={factor.label}>
-                        {[-2, -1, 0, 1, 2].map((value) => (
-                          <button
-                            key={value}
-                            type="button"
-                            className={current === value ? "rating-dot active" : "rating-dot"}
-                            onClick={() => setCriterion(selectedHouse.id, factor.id, value)}
-                            aria-label={`${factor.label} ${value}`}
-                          >
-                            {value > 0 ? `+${value}` : value}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              </> : (
-                <button className="primary-button wide-button" type="button" onClick={() => markVisited(selectedHouse.id)}>
-                  <ClipboardCheck size={18} />
-                  {selectedHouse.visitedAt ? "Open visit score" : "Mark visited and score"}
-                </button>
-              )}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setHousePanel(null)}
+                className="fixed inset-0 bg-zinc-900/20 backdrop-blur-sm z-40"
+              />
+              <motion.div
+                initial={{ x: "100%", opacity: 0, scale: 0.95 }}
+                animate={{ x: 0, opacity: 1, scale: 1 }}
+                exit={{ x: "100%", opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", bounce: 0.1, duration: 0.5 }}
+                role="dialog"
+                aria-modal="true"
+                aria-label={housePanel === "add" ? "Add a home" : housePanel === "visit" ? "Visit scoring" : "Home details"}
+                className="house-sheet fixed inset-0 w-full bg-white shadow-2xl z-50 overflow-hidden flex flex-col border border-zinc-100 sm:inset-y-4 sm:left-auto sm:right-4 sm:max-w-xl sm:rounded-3xl"
+              >
+                {housePanel === "add" && <AddHousePanel draft={draft} setDraft={setDraft} addListing={addListing} setHousePanel={setHousePanel} inferAddress={inferAddress} error={draftError} clearError={() => setDraftError("")} />}
+                {housePanel !== "add" && selectedHouse && selectedScore && (
+                  <HouseDetailPanel house={selectedHouse} score={selectedScore} updateHouse={updateHouse} updateHouseNumber={updateHouseNumber} setCriterion={setCriterion} setHousePanel={setHousePanel} markVisited={markVisited} isVisitMode={housePanel === "visit"} visitFactors={visitFactors} statusOptions={statusOptions} />
+                )}
+              </motion.div>
             </>
-          ) : (
-            <div className="empty-state">
-              <Home size={28} />
-              <h2>No selected home</h2>
-            </div>
           )}
-        </aside> : null}
-      </section>
+        </AnimatePresence>
 
-      {activeTab === "recommendations" ? <section className="compare-section" aria-label="Comparison table">
-        <div className="section-heading">
-          <ClipboardCheck size={18} />
-          <h2>Compare</h2>
-        </div>
-        <div className="compare-table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Home</th>
-                <th>Score</th>
-                <th>Family</th>
-                <th>Finance</th>
-                <th>Price</th>
-                <th>Beds</th>
-                <th>Baths</th>
-                <th>Sq ft</th>
-                <th>Commute</th>
-                <th>Noise</th>
-                <th>Light</th>
-                <th>Air</th>
-              </tr>
-            </thead>
-            <tbody>
-              {scoredHouses.map(({ house, score }) => (
-                <tr key={house.id}>
-                  <td>{house.address}</td>
-                  <td>{score.total}</td>
-                  <td>{score.familyFit}</td>
-                  <td>{score.financeFit}</td>
-                  <td>{house.price ? money.format(house.price) : "?"}</td>
-                  <td>{house.beds ?? "?"}</td>
-                  <td>{house.baths ?? "?"}</td>
-                  <td>{formatNumber(house.sqft)}</td>
-                  <td>{house.commute ? `${house.commute} min` : "?"}</td>
-                  <td>{house.criteria.noise ?? 0}</td>
-                  <td>{house.criteria.light ?? 0}</td>
-                  <td>{house.criteria.smell ?? 0}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section> : null}
-
-      {activeTab === "profile" ? <section className="roadmap-section" aria-label="Connector plan">
-        <div className="roadmap-card">
-          <RefreshCw size={18} />
-          <div>
-            <strong>Connector path</strong>
-            <p>
-              Link and share import works now. Direct listing sync should use approved APIs or partner feeds before replacing manual fields.
-            </p>
-          </div>
-        </div>
-      </section> : null}
-    </main>
+        <AnimatePresence>
+          {assistantOpen ? (
+            <>
+              <motion.button
+                type="button"
+                aria-label="Close AI assistant"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setAssistantOpen(false)}
+                className="fixed inset-0 z-[60] cursor-default bg-zinc-900/25 backdrop-blur-sm"
+              />
+              <AssistantPanel profile={profile} houses={scoredHouses} onClose={() => setAssistantOpen(false)} />
+            </>
+          ) : null}
+        </AnimatePresence>
+      </main>
+    </div>
   );
 }
