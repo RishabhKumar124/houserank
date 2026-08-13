@@ -92,7 +92,7 @@ export function SavedTab({
             className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#11756d] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#0d5d57] disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
           >
             {isLoading ? <RefreshCw className="animate-spin" size={18} /> : <Sparkles size={18} />}
-            {isLoading ? "Researching saved homes..." : analyzedCount ? "Refresh GPT analysis" : "Analyze saved homes"}
+            {isLoading ? "Deep research running..." : analyzedCount ? "Refresh GPT analysis" : "Start deep analysis"}
           </button>
         </div>
         <div className="grid grid-cols-1 border-t border-[#bedbd5] bg-white/55 sm:grid-cols-3">
@@ -235,11 +235,11 @@ export function SavedTab({
               ) : (
                 <div className="flex flex-col gap-3 rounded-lg border border-dashed border-[#b9c8e9] bg-[#f2f5ff] p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <strong className="text-sm text-[#24428d]">GPT research not run yet</strong>
-                    <p className="mt-1 text-xs leading-relaxed text-zinc-600">Research this address, local market, fit, and five-year outlook.</p>
+                    <strong className="text-sm text-[#24428d]">{refreshing ? "Deep research is running" : "Waiting for GPT research"}</strong>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-600">{refreshing ? "You can keep using HouseRank. This result will appear automatically." : "Saved homes start deep analysis automatically when the app is open."}</p>
                   </div>
                   <button type="button" disabled={isLoading} onClick={() => void analyzeHouses([house.id])} className="flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-[#3157b7] px-3 text-xs font-bold text-white disabled:opacity-60">
-                    {refreshing ? <RefreshCw className="animate-spin" size={15} /> : <Sparkles size={15} />} Analyze
+                    {refreshing ? <RefreshCw className="animate-spin" size={15} /> : <Sparkles size={15} />} {refreshing ? "Running" : "Retry"}
                   </button>
                 </div>
               )}

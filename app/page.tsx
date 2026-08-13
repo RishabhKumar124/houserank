@@ -45,7 +45,7 @@ import {
   Volume2,
   Wind,
 } from "lucide-react";
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -769,6 +769,7 @@ export default function HomePage() {
     activeIds: string[];
   }>({ status: "idle", error: "", activeIds: [] });
   const importInputRef = useRef<HTMLInputElement>(null);
+  const autoAnalysisStartedRef = useRef(new Set<string>());
 
   useEffect(() => {
     const cachedVersion = window.localStorage.getItem("houserank-app-version");
@@ -891,47 +892,69 @@ export default function HomePage() {
     );
   }
 
-  async function analyzeHouses(ids?: string[]) {
+  const analyzeHouses = useCallback(async (ids?: string[]) => {
     const targets = houses.filter((house) => house.favorite && (!ids || ids.includes(house.id)));
     if (!targets.length) return;
 
     const targetIds = targets.map((house) => house.id);
     setAnalysisState({ status: "loading", error: "", activeIds: targetIds });
-    setSaveState(targets.length === 1 ? "Researching one saved home" : `Researching ${targets.length} saved homes`);
+    setSaveState(targets.length === 1 ? "Deep research running in background" : `${targets.length} deep analyses running in background`);
 
-    try {
+    async function researchHouse(house: House) {
       const response = await fetch("/api/analyze-houses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           profile,
-          houses: targets.map((house) => ({
+          houses: [{
             ...house,
             aiAnalysis: undefined,
             baselineScore: scoreHouse(house, profile),
-          })),
+          }],
         }),
       });
       const body = await response.json() as { analyses?: Array<AIHouseAnalysis & { houseId: string }>; error?: string };
       if (!response.ok || !body.analyses) throw new Error(body.error || "GPT research failed.");
 
-      const analysisById = new Map(body.analyses.map((analysis) => [analysis.houseId, analysis]));
+      const next = body.analyses.find((analysis) => analysis.houseId === house.id);
+      if (!next) throw new Error(`GPT research did not return a result for ${house.address}.`);
+      const aiAnalysis = Object.fromEntries(
+        Object.entries(next).filter(([key]) => key !== "houseId"),
+      ) as AIHouseAnalysis;
       setHouses((current) => current.map((house) => {
-        const next = analysisById.get(house.id);
-        if (!next) return house;
-        const aiAnalysis = Object.fromEntries(
-          Object.entries(next).filter(([key]) => key !== "houseId"),
-        ) as AIHouseAnalysis;
-        return { ...house, aiAnalysis };
+        return house.id === next.houseId ? { ...house, aiAnalysis } : house;
       }));
-      setAnalysisState({ status: "idle", error: "", activeIds: [] });
-      setSaveState(targets.length === 1 ? "GPT analysis updated" : `${targets.length} GPT analyses updated`);
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "GPT research failed. Please retry.";
-      setAnalysisState({ status: "error", error: message, activeIds: [] });
-      setSaveState("GPT analysis needs attention");
+      setAnalysisState((current) => ({
+        ...current,
+        activeIds: current.activeIds.filter((id) => id !== house.id),
+      }));
     }
-  }
+
+    const results = await Promise.allSettled(targets.map(researchHouse));
+    const failures = results.filter((result) => result.status === "rejected") as PromiseRejectedResult[];
+    const completed = results.length - failures.length;
+    if (failures.length) {
+      const detail = failures[0].reason instanceof Error ? failures[0].reason.message : "Please retry from Saved Homes.";
+      setAnalysisState({ status: "error", error: `${completed} completed, ${failures.length} failed. ${detail}`, activeIds: [] });
+      setSaveState("Some GPT analysis needs attention");
+      return;
+    }
+
+    setAnalysisState({ status: "idle", error: "", activeIds: [] });
+    setSaveState(targets.length === 1 ? "GPT analysis updated" : `${targets.length} GPT analyses updated`);
+  }, [houses, profile]);
+
+  useEffect(() => {
+    if (!hydrated || analysisState.status === "loading") return;
+    const pendingIds = houses
+      .filter((house) => house.favorite && !house.aiAnalysis && !autoAnalysisStartedRef.current.has(house.id))
+      .map((house) => house.id)
+      .slice(0, 3);
+    if (!pendingIds.length) return;
+
+    pendingIds.forEach((id) => autoAnalysisStartedRef.current.add(id));
+    void analyzeHouses(pendingIds);
+  }, [analysisState.status, analyzeHouses, houses, hydrated]);
 
   function updateHouseNumber(id: string, key: keyof House, value: string) {
     updateHouse(id, { [key]: toNumber(value) } as Partial<House>);

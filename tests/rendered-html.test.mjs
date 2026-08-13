@@ -67,8 +67,9 @@ test("ships mobile app metadata and no starter dependency", async () => {
   assert.doesNotMatch(page, /_sites-preview|SkeletonPreview/);
 });
 
-test("saved homes expose GPT fit, investment, forecast, and sorting controls", async () => {
-  const [savedTab, analysisRoute, types] = await Promise.all([
+test("saved homes expose automatic GPT fit, investment, forecast, and sorting controls", async () => {
+  const [page, savedTab, analysisRoute, types] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/tabs/SavedTab.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/api/analyze-houses/route.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/types.ts", import.meta.url), "utf8"),
@@ -78,6 +79,9 @@ test("saved homes expose GPT fit, investment, forecast, and sorting controls", a
   assert.match(savedTab, /Investment score/);
   assert.match(savedTab, /5-year growth/);
   assert.match(savedTab, /Web sources/);
+  assert.match(savedTab, /Saved homes start deep analysis automatically/);
+  assert.match(page, /autoAnalysisStartedRef/);
+  assert.match(page, /Promise\.allSettled/);
   assert.match(analysisRoute, /web_search/);
   assert.match(analysisRoute, /json_schema/);
   assert.match(analysisRoute, /risk-adjusted investment quality/i);
