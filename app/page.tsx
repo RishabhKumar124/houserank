@@ -6,6 +6,17 @@ import { SavedTab } from "./components/tabs/SavedTab";
 import { VisitedTab } from "./components/tabs/VisitedTab";
 import { AddHousePanel, HouseDetailPanel } from "./components/HousePanels";
 import { AssistantPanel } from "./components/AssistantPanel";
+import type {
+  AIHouseAnalysis,
+  AppTab,
+  DraftListing,
+  House,
+  HousePanel,
+  HouseStatus,
+  Profile,
+  Score,
+  Suggestion,
+} from "../lib/types";
 
 
 import {
@@ -36,99 +47,13 @@ import {
 } from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 
-type Profile = {
-  location: string;
-  income: string;
-  savings: string;
-  stocks: string;
-  retirement: string;
-  monthlyDebt: string;
-  downPaymentPct: string;
-  safetyPriority: string;
-  schoolPriority: string;
-  minPrice: string;
-  maxPrice: string;
-  beds: string;
-  baths: string;
-  commute: string;
-  neighborhoods: string;
-  mustHaves: string;
-  dealBreakers: string;
-  context: string;
-};
-
-type DraftListing = {
-  url: string;
-  address: string;
-  price: string;
-  beds: string;
-  baths: string;
-  sqft: string;
-  year: string;
-  commute: string;
-  photo: string;
-  notes: string;
-};
-
-type HouseStatus = "Saved" | "Touring" | "Seen" | "Contender" | "Offer";
-
-type House = {
-  id: string;
-  source: string;
-  url: string;
-  address: string;
-  price?: number;
-  beds?: number;
-  baths?: number;
-  sqft?: number;
-  year?: number;
-  commute?: number;
-  photo: string;
-  notes: string;
-  status: HouseStatus;
-  favorite?: boolean;
-  visitedAt?: string;
-  criteria: Record<string, number>;
-};
-
-type AppTab = "recommendations" | "saved" | "visited" | "profile";
-type HousePanel = "add" | "details" | "visit" | null;
-
-type Score = {
-  total: number;
-  base: number;
-  visitDelta: number;
-  financeFit: number;
-  familyFit: number;
-  label: string;
-  flags: string[];
-};
-
-type Suggestion = {
-  minPrice: number;
-  maxPrice: number;
-  stretchPrice: number;
-  downPayment: number;
-  cashReserve: number;
-  monthlyBudget: number;
-  beds: number;
-  baths: number;
-  commute: number;
-  location: string;
-  neighborhoods: string;
-  mustHaves: string;
-  dealBreakers: string;
-  rationale: string[];
-  cautions: string[];
-};
-
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
 const STORAGE_KEY = "houserank-local-v2";
-const APP_VERSION = "4";
+const APP_VERSION = "5";
 const ASSUMED_RATE = 0.067;
 const ASSUMED_TAX_INSURANCE_RATE = 0.0135;
 const DEFAULT_RESERVE_MONTHS = 6;
@@ -838,6 +763,11 @@ export default function HomePage() {
   const [saveState, setSaveState] = useState("Saved locally");
   const [hydrated, setHydrated] = useState(false);
   const [draftError, setDraftError] = useState("");
+  const [analysisState, setAnalysisState] = useState<{
+    status: "idle" | "loading" | "error";
+    error: string;
+    activeIds: string[];
+  }>({ status: "idle", error: "", activeIds: [] });
   const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -919,6 +849,10 @@ export default function HomePage() {
 
   function updateProfile(key: keyof Profile, value: string) {
     setProfile((current) => ({ ...current, [key]: value }));
+    setHouses((current) => current.map((house) => house.aiAnalysis ? {
+      ...house,
+      aiAnalysis: { ...house.aiAnalysis, stale: true },
+    } : house));
   }
 
   function applySuggestion() {
@@ -934,13 +868,69 @@ export default function HomePage() {
       mustHaves: current.mustHaves.trim() || suggestion.mustHaves,
       dealBreakers: current.dealBreakers.trim() || suggestion.dealBreakers,
     }));
+    setHouses((current) => current.map((house) => house.aiAnalysis ? {
+      ...house,
+      aiAnalysis: { ...house.aiAnalysis, stale: true },
+    } : house));
     setSaveState("Suggestions filled empty fields");
   }
 
   function updateHouse(id: string, patch: Partial<House>) {
     setHouses((current) =>
-      current.map((house) => (house.id === id ? { ...house, ...patch } : house))
+      current.map((house) => {
+        if (house.id !== id) return house;
+        const researchInputsChanged = Object.keys(patch).some((key) => !["favorite", "status", "aiAnalysis"].includes(key));
+        return {
+          ...house,
+          ...patch,
+          aiAnalysis: researchInputsChanged && house.aiAnalysis
+            ? { ...house.aiAnalysis, stale: true }
+            : (patch.aiAnalysis ?? house.aiAnalysis),
+        };
+      })
     );
+  }
+
+  async function analyzeHouses(ids?: string[]) {
+    const targets = houses.filter((house) => house.favorite && (!ids || ids.includes(house.id)));
+    if (!targets.length) return;
+
+    const targetIds = targets.map((house) => house.id);
+    setAnalysisState({ status: "loading", error: "", activeIds: targetIds });
+    setSaveState(targets.length === 1 ? "Researching one saved home" : `Researching ${targets.length} saved homes`);
+
+    try {
+      const response = await fetch("/api/analyze-houses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profile,
+          houses: targets.map((house) => ({
+            ...house,
+            aiAnalysis: undefined,
+            baselineScore: scoreHouse(house, profile),
+          })),
+        }),
+      });
+      const body = await response.json() as { analyses?: Array<AIHouseAnalysis & { houseId: string }>; error?: string };
+      if (!response.ok || !body.analyses) throw new Error(body.error || "GPT research failed.");
+
+      const analysisById = new Map(body.analyses.map((analysis) => [analysis.houseId, analysis]));
+      setHouses((current) => current.map((house) => {
+        const next = analysisById.get(house.id);
+        if (!next) return house;
+        const aiAnalysis = Object.fromEntries(
+          Object.entries(next).filter(([key]) => key !== "houseId"),
+        ) as AIHouseAnalysis;
+        return { ...house, aiAnalysis };
+      }));
+      setAnalysisState({ status: "idle", error: "", activeIds: [] });
+      setSaveState(targets.length === 1 ? "GPT analysis updated" : `${targets.length} GPT analyses updated`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "GPT research failed. Please retry.";
+      setAnalysisState({ status: "error", error: message, activeIds: [] });
+      setSaveState("GPT analysis needs attention");
+    }
   }
 
   function updateHouseNumber(id: string, key: keyof House, value: string) {
@@ -1033,11 +1023,12 @@ export default function HomePage() {
         house.id === id
           ? {
               ...house,
-              criteria: {
-                ...house.criteria,
-                [criterionId]: value,
-              },
-            }
+                criteria: {
+                  ...house.criteria,
+                  [criterionId]: value,
+                },
+                aiAnalysis: house.aiAnalysis ? { ...house.aiAnalysis, stale: true } : undefined,
+              }
           : house
       )
     );
@@ -1104,15 +1095,15 @@ export default function HomePage() {
 
   // ===== NEW UI DRIVEN BY FRAMER MOTION & PREMIUM TASTE =====
   return (
-    <div className="app-root min-h-screen w-full max-w-full overflow-x-clip bg-zinc-50 text-zinc-900 font-sans selection:bg-zinc-200">
-      <header className="sticky top-0 z-40 w-full backdrop-blur-xl bg-white/70 border-b border-zinc-200/50">
+    <div className="app-root min-h-screen w-full max-w-full overflow-x-clip bg-[#eef2f8] text-zinc-900 font-sans selection:bg-[#bfe2d7]">
+      <header className="sticky top-0 z-40 w-full border-b border-[#cfd7e5] bg-[#fffdf8]/90 backdrop-blur-xl">
         <div className="mobile-header mx-auto flex min-h-16 w-full max-w-6xl items-center justify-between gap-2 px-4 py-2 md:px-6">
           <div className="brand-mobile flex min-w-0 items-center gap-2 sm:gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-white shadow-sm">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#11756d] text-white shadow-sm">
               <Home size={18} />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-widest font-semibold text-zinc-500 leading-none">HouseRank</p>
+              <p className="text-[10px] uppercase font-extrabold leading-none text-[#0d5d57]">HouseRank</p>
               <h1 className="truncate text-sm font-medium leading-tight">Home Buying Assistant</h1>
             </div>
           </div>
@@ -1120,7 +1111,7 @@ export default function HomePage() {
             <span className="hidden sm:inline-flex items-center text-xs font-medium text-zinc-500 bg-zinc-100 px-2 py-1 rounded-full mr-2">
               {saveState}
             </span>
-            <button onClick={() => setAssistantOpen(true)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-xs font-medium text-white shadow-sm transition-colors hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2 sm:w-auto sm:gap-2 sm:px-3" aria-label="Open HouseRank AI">
+            <button onClick={() => setAssistantOpen(true)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#3157b7] text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#24428d] focus:outline-none focus:ring-2 focus:ring-[#3157b7] focus:ring-offset-2 sm:w-auto sm:gap-2 sm:px-3" aria-label="Open HouseRank AI">
               <Sparkles size={16} /> <span className="hidden sm:inline">Ask AI</span>
             </button>
             <button onClick={installApp} aria-label="Install HouseRank" title="Install HouseRank" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1">
@@ -1141,7 +1132,7 @@ export default function HomePage() {
       </div>
 
       <main className="mx-auto w-full max-w-6xl min-w-0 overflow-x-clip px-3 pb-28 pt-5 min-[380px]:px-4 sm:py-8 md:px-6">
-        <nav className="mobile-tab-bar grid grid-cols-4 gap-1 p-1 bg-zinc-100/95 backdrop-blur-md rounded-2xl mb-8 border border-zinc-200/70 shadow-sm" aria-label="HouseRank sections">
+        <nav className="mobile-tab-bar mb-8 grid grid-cols-4 gap-1 rounded-lg border border-[#cfd7e5] bg-[#e2e7ef]/95 p-1 shadow-sm backdrop-blur-md" aria-label="HouseRank sections">
           {([
             ["recommendations", Search, "Recommendations", houses.length],
             ["saved", Heart, "Saved", houses.filter((h) => h.favorite).length],
@@ -1154,21 +1145,21 @@ export default function HomePage() {
                 key={tab}
                 onClick={() => { setActiveTab(tab); setHousePanel(null); }}
                 aria-current={isActive ? "page" : undefined}
-                className={`relative flex min-w-0 items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-500 focus:ring-offset-1 z-10 ${isActive ? 'text-zinc-900' : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-200/50'}`}
+                className={`relative z-10 flex min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-[#11756d] focus:ring-offset-1 ${isActive ? 'text-white' : 'text-zinc-600 hover:bg-white/60 hover:text-zinc-950'}`}
               >
                 {isActive && (
                   <motion.div
                     layoutId="activeTabIndicator"
-                    className="absolute inset-0 bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.05)] border border-black/[0.04]"
+                    className={`absolute inset-0 rounded-lg shadow-sm ${tab === "saved" ? "bg-[#3157b7]" : tab === "visited" ? "bg-[#b77b18]" : tab === "profile" ? "bg-[#d9654f]" : "bg-[#11756d]"}`}
                     transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                   />
                 )}
                 <span className="relative flex min-w-0 items-center justify-center gap-2 z-20">
-                  <Icon size={16} className={isActive ? 'text-zinc-900' : 'text-zinc-400'} />
+                  <Icon size={16} className={isActive ? 'text-white' : 'text-zinc-500'} />
                   <span className="tab-label tab-label-desktop truncate">{label}</span>
                   <span className="tab-label tab-label-mobile truncate">{tab === "recommendations" ? "Ranked" : label}</span>
                   {count !== null && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-zinc-100 text-zinc-900' : 'bg-zinc-200/50 text-zinc-500'}`}>
+                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? 'bg-white/90 text-zinc-900' : 'bg-white/60 text-zinc-600'}`}>
                       {count}
                     </span>
                   )}
@@ -1189,7 +1180,7 @@ export default function HomePage() {
           >
             {activeTab === "profile" && <ProfileTab profile={profile} updateProfile={updateProfile} suggestion={suggestion} applySuggestion={applySuggestion} />}
             {activeTab === "recommendations" && <RecommendationsTab houses={scoredHouses} formatMoney={formatMoney} openHouse={openHouse} toggleFavorite={toggleFavorite} markVisited={markVisited} deleteHouse={deleteHouse} setHousePanel={setHousePanel} selectedId={selectedId} />}
-            {activeTab === "saved" && <SavedTab houses={visibleHouses} formatMoney={formatMoney} openHouse={openHouse} toggleFavorite={toggleFavorite} markVisited={markVisited} deleteHouse={deleteHouse} selectedId={selectedId} />}
+            {activeTab === "saved" && <SavedTab houses={visibleHouses} formatMoney={formatMoney} openHouse={openHouse} toggleFavorite={toggleFavorite} markVisited={markVisited} deleteHouse={deleteHouse} analyzeHouses={analyzeHouses} analysisState={analysisState} selectedId={selectedId} />}
             {activeTab === "visited" && <VisitedTab houses={visibleHouses} formatMoney={formatMoney} openHouse={openHouse} toggleFavorite={toggleFavorite} markVisited={markVisited} deleteHouse={deleteHouse} selectedId={selectedId} />}
           </motion.div>
         </AnimatePresence>

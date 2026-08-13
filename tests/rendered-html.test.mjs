@@ -57,7 +57,7 @@ test("ships mobile app metadata and no starter dependency", async () => {
   assert.match(page, /visitFactors/);
   assert.match(page, /AssistantPanel/);
   assert.match(profileTab, /Suggested from Context/);
-  assert.match(savedTab, /Saved Favorites/);
+  assert.match(savedTab, /Saved Homes/);
   assert.match(visitedTab, /Visited Houses/);
   assert.match(profileTab, /Buyer Profile/);
   assert.match(assistantRoute, /process\.env\.OPENAI_API_KEY/);
@@ -65,6 +65,23 @@ test("ships mobile app metadata and no starter dependency", async () => {
   assert.match(layout, /manifest: "\/manifest\.webmanifest"/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   assert.doesNotMatch(page, /_sites-preview|SkeletonPreview/);
+});
+
+test("saved homes expose GPT fit, investment, forecast, and sorting controls", async () => {
+  const [savedTab, analysisRoute, types] = await Promise.all([
+    readFile(new URL("../app/components/tabs/SavedTab.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/analyze-houses/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/types.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(savedTab, /GPT buying score/);
+  assert.match(savedTab, /Investment score/);
+  assert.match(savedTab, /5-year growth/);
+  assert.match(savedTab, /Web sources/);
+  assert.match(analysisRoute, /web_search/);
+  assert.match(analysisRoute, /json_schema/);
+  assert.match(analysisRoute, /risk-adjusted investment quality/i);
+  assert.match(types, /AIHouseAnalysis/);
 });
 
 test("assistant API reports missing server configuration safely", async () => {
@@ -95,4 +112,24 @@ test("assistant API reports missing server configuration safely", async () => {
   );
   assert.equal(askResponse.status, 503);
   assert.match((await askResponse.json()).error, /not configured/i);
+});
+
+test("house analysis API reports missing server configuration safely", async () => {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("analysis-test", `${process.pid}-${Date.now()}`);
+  const { default: worker } = await import(workerUrl.href);
+  const env = { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } };
+  const ctx = { waitUntil() {}, passThroughOnException() {} };
+
+  const statusResponse = await worker.fetch(new Request("http://localhost/api/analyze-houses"), env, ctx);
+  assert.equal(statusResponse.status, 200);
+  assert.deepEqual(await statusResponse.json(), { configured: false, model: "gpt-5-mini", webSearch: true });
+
+  const analysisResponse = await worker.fetch(new Request("http://localhost/api/analyze-houses", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ houses: [{ id: "sample-1" }] }),
+  }), env, ctx);
+  assert.equal(analysisResponse.status, 503);
+  assert.match((await analysisResponse.json()).error, /not configured/i);
 });

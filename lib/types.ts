@@ -34,6 +34,33 @@ export type DraftListing = {
 
 export type HouseStatus = "Saved" | "Touring" | "Seen" | "Contender" | "Offer";
 
+export type AnalysisConfidence = "low" | "medium" | "high";
+
+export type ResearchSource = {
+  title: string;
+  url: string;
+};
+
+export type AIHouseAnalysis = {
+  buyingScore: number;
+  investmentScore: number;
+  currentValue: number;
+  fiveYearLow: number;
+  fiveYearMid: number;
+  fiveYearHigh: number;
+  fiveYearGrowthPct: number;
+  confidence: AnalysisConfidence;
+  summary: string;
+  buyingReasons: string[];
+  investmentReasons: string[];
+  risks: string[];
+  assumptions: string[];
+  sources: ResearchSource[];
+  analyzedAt: string;
+  model: string;
+  stale?: boolean;
+};
+
 export type House = {
   id: string;
   source: string;
@@ -51,6 +78,7 @@ export type House = {
   favorite?: boolean;
   visitedAt?: string;
   criteria: Record<string, number>;
+  aiAnalysis?: AIHouseAnalysis;
 };
 
 export type AppTab = "recommendations" | "saved" | "visited" | "profile";
