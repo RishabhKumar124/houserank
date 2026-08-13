@@ -31,6 +31,8 @@ test("server-renders the HouseRank app shell", async () => {
   const html = await response.text();
   assert.match(html, /<title>HouseRank<\/title>/i);
   assert.match(html, /Home buying assistant/);
+  assert.match(html, /Suggested from context/);
+  assert.match(html, /Safety \+ schools prioritized/);
   assert.match(html, /Showing score/);
   assert.match(html, /Compare/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|Building your site/i);

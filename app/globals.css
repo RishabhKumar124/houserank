@@ -76,6 +76,7 @@ img {
   padding: 12px 0 16px;
   background: rgba(245, 247, 251, 0.92);
   backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(216, 222, 232, 0.65);
 }
 
 .brand-lockup,
@@ -185,6 +186,7 @@ h3 {
 .icon-button:hover,
 .icon-button:focus-visible,
 .primary-button:hover,
+.secondary-button:hover,
 .small-link:hover,
 .chip:hover,
 .rating-dot:hover {
@@ -194,6 +196,7 @@ h3 {
 
 .icon-button:active,
 .primary-button:active,
+.secondary-button:active,
 .chip:active,
 .rating-dot:active {
   transform: translateY(1px);
@@ -354,6 +357,60 @@ select:focus {
   margin-bottom: 12px;
 }
 
+.recommendation-card {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 13px;
+  border: 1px solid #bfded8;
+  border-radius: 8px;
+  background: #f5fbf8;
+}
+
+.recommendation-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.recommendation-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.recommendation-grid div {
+  display: grid;
+  gap: 3px;
+  min-height: 64px;
+  padding: 10px;
+  border: 1px solid #d7ebe5;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.recommendation-grid span,
+.recommendation-note,
+.rationale-item {
+  color: var(--muted);
+}
+
+.recommendation-grid span {
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.recommendation-grid strong {
+  font-size: 0.92rem;
+  line-height: 1.25;
+}
+
+.recommendation-note {
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .lens-grid {
   display: grid;
   gap: 10px;
@@ -376,18 +433,55 @@ select:focus {
   line-height: 1.45;
 }
 
+.rationale-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.rationale-item {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfe;
+  font-size: 0.78rem;
+  line-height: 1.42;
+}
+
+.rationale-item svg {
+  color: var(--gold);
+}
+
 .add-listing {
-  grid-template-columns: 1.2fr 0.85fr 0.55fr 0.42fr 0.42fr 0.5fr 0.5fr auto;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   align-items: end;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--line);
 }
 
 .add-listing .wide {
+  grid-column: span 4;
+}
+
+.add-listing label {
+  grid-column: span 2;
+}
+
+.add-listing label:nth-child(1),
+.add-listing label:nth-child(10) {
+  grid-column: span 4;
+}
+
+.add-listing .primary-button {
   grid-column: span 2;
 }
 
 .primary-button,
+.secondary-button,
 .small-link {
   display: inline-flex;
   align-items: center;
@@ -405,6 +499,14 @@ select:focus {
   padding: 0 16px;
   color: #ffffff;
   background: var(--teal);
+}
+
+.secondary-button {
+  padding: 0 12px;
+  border-color: var(--line);
+  color: var(--ink);
+  background: #ffffff;
+  font-size: 0.83rem;
 }
 
 .small-link {
@@ -874,6 +976,15 @@ td {
 
   .rating {
     grid-template-columns: repeat(5, minmax(34px, 1fr));
+  }
+
+  .recommendation-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .recommendation-grid {
+    grid-template-columns: 1fr;
   }
 }
 

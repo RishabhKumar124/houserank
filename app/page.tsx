@@ -5,10 +5,13 @@ import {
   Baby,
   Bath,
   BedDouble,
+  Calculator,
   Car,
   CheckCircle2,
   ClipboardCheck,
+  DollarSign,
   Download,
+  GraduationCap,
   Home,
   Link as LinkIcon,
   MapPin,
@@ -21,6 +24,7 @@ import {
   Smartphone,
   Star,
   Sun,
+  Target,
   Trash2,
   Upload,
   Utensils,
@@ -30,6 +34,15 @@ import {
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type Profile = {
+  location: string;
+  income: string;
+  savings: string;
+  stocks: string;
+  retirement: string;
+  monthlyDebt: string;
+  downPaymentPct: string;
+  safetyPriority: string;
+  schoolPriority: string;
   minPrice: string;
   maxPrice: string;
   beds: string;
@@ -77,8 +90,28 @@ type Score = {
   total: number;
   base: number;
   visitDelta: number;
+  financeFit: number;
+  familyFit: number;
   label: string;
   flags: string[];
+};
+
+type Suggestion = {
+  minPrice: number;
+  maxPrice: number;
+  stretchPrice: number;
+  downPayment: number;
+  cashReserve: number;
+  monthlyBudget: number;
+  beds: number;
+  baths: number;
+  commute: number;
+  location: string;
+  neighborhoods: string;
+  mustHaves: string;
+  dealBreakers: string;
+  rationale: string[];
+  cautions: string[];
 };
 
 type BeforeInstallPromptEvent = Event & {
@@ -86,19 +119,34 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
-const STORAGE_KEY = "houserank-local-v1";
+const STORAGE_KEY = "houserank-local-v2";
+const ASSUMED_RATE = 0.067;
+const ASSUMED_TAX_INSURANCE_RATE = 0.0135;
+const DEFAULT_RESERVE_MONTHS = 6;
 
 const defaultProfile: Profile = {
-  minPrice: "650000",
-  maxPrice: "950000",
+  location: "Bellevue, WA",
+  income: "350000",
+  savings: "375000",
+  stocks: "200000",
+  retirement: "100000",
+  monthlyDebt: "",
+  downPaymentPct: "20",
+  safetyPriority: "Very high",
+  schoolPriority: "Very high",
+  minPrice: "1200000",
+  maxPrice: "1700000",
   beds: "3",
-  baths: "2",
-  commute: "35",
-  neighborhoods: "Good schools, parks, Indian grocery within 20 minutes",
-  mustHaves: "Quiet bedrooms, good ventilation, storage, safe stairs",
-  dealBreakers: "Water damage, heavy road noise, poor kitchen exhaust",
+  baths: "2.5",
+  commute: "30",
+  neighborhoods:
+    "Bellevue, WA. Prioritize safe residential streets, Bellevue School District fit, parks, daycare route, sidewalks, and Indian grocery/community access.",
+  mustHaves:
+    "Safe street, excellent schools, quiet bedrooms, baby-safe stairs, parks nearby, daycare route, good kitchen ventilation, storage",
+  dealBreakers:
+    "Crime concerns, poor school fit, water damage, heavy road noise, unsafe stairs, poor kitchen exhaust",
   context:
-    "Indian family with a baby girl. We cook often, care about quiet sleep, safe stairs, parks, daycare, schools, and nearby Indian groceries or community.",
+    "Indian couple with a 1-year-old daughter looking in Bellevue. Combined income is 350k. Assets: 375k savings, 200k stocks, 100k retirement. Safety is very important. Good schooling should be assumed from the family context. We cook often and care about quiet sleep, safe stairs, parks, daycare, schools, and nearby Indian groceries or community.",
 };
 
 const sampleCriteria: Record<string, number> = {
@@ -114,55 +162,55 @@ const sampleHouses: House[] = [
     id: "sample-1",
     source: "Zillow",
     url: "https://www.zillow.com/",
-    address: "1488 Willow Bend Dr",
-    price: 835000,
+    address: "1488 Somerset Ridge Dr, Bellevue",
+    price: 1585000,
     beds: 4,
-    baths: 2.5,
-    sqft: 2180,
+    baths: 3,
+    sqft: 2480,
     year: 1998,
-    commute: 28,
+    commute: 24,
     photo:
       "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=900&q=80",
     notes:
-      "Quiet cul-de-sac, pantry, parks nearby, newer HVAC. Check kitchen exhaust and stairs gate fit.",
+      "Bellevue School District, quiet residential street, pantry, parks nearby, newer HVAC. Verify elementary assignment, street lighting, kitchen exhaust, and stair gate fit.",
     status: "Contender",
-    criteria: sampleCriteria,
+    criteria: { ...sampleCriteria, schools: 2, neighborhood: 2, kitchen: 1, community: 1 },
   },
   {
     id: "sample-2",
     source: "Redfin",
     url: "https://www.redfin.com/",
-    address: "72 Maple Ridge Ct",
-    price: 910000,
+    address: "72 Lake Hills Connector, Bellevue",
+    price: 1325000,
     beds: 3,
     baths: 2,
-    sqft: 1840,
+    sqft: 1760,
     year: 1987,
-    commute: 38,
+    commute: 32,
     photo:
       "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=900&q=80",
     notes:
-      "Great natural light and mature trees. Some road noise from the back deck during rush hour.",
+      "Good price for Bellevue and strong natural light. Some road noise from the back deck during rush hour; verify school boundary and toddler-safe yard.",
     status: "Seen",
-    criteria: { noise: -1, light: 2, layout: 1, exterior: 1, storage: 0 },
+    criteria: { noise: -1, light: 2, layout: 1, schools: 1, safety: 0, storage: 0 },
   },
   {
     id: "sample-3",
     source: "Realtor",
     url: "https://www.realtor.com/",
-    address: "309 Cedar Garden Ln",
-    price: 760000,
-    beds: 3,
-    baths: 2,
-    sqft: 1660,
+    address: "309 Crossroads Garden Ln, Bellevue",
+    price: 1710000,
+    beds: 4,
+    baths: 2.5,
+    sqft: 2320,
     year: 2006,
-    commute: 31,
+    commute: 27,
     photo:
       "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80",
     notes:
-      "Lower price, clean inspection notes, small yard, strong storage. Need to verify daycare route.",
+      "Walkable to parks and shopping, larger layout, strong storage. Slightly above suggested range; verify neighborhood noise after school pickup hours.",
     status: "Touring",
-    criteria: { noise: 1, light: 1, smell: 2, storage: 2, outdoor: -1 },
+    criteria: { noise: 1, light: 1, smell: 2, storage: 2, outdoor: 1, schools: 2, safety: 1 },
   },
 ];
 
@@ -214,11 +262,11 @@ const visitFactors = [
   },
   {
     id: "safety",
-    label: "Baby safety",
+    label: "Safety",
     icon: Baby,
-    weight: 1.25,
-    low: "open stairs, hazards, blind spots",
-    high: "safe stairs, visible play zones",
+    weight: 1.55,
+    low: "unsafe stairs, poor lighting, blind spots",
+    high: "safe street, visible play zones, secure entries",
   },
   {
     id: "kitchen",
@@ -295,10 +343,10 @@ const visitFactors = [
   {
     id: "schools",
     label: "Schools and care",
-    icon: Baby,
-    weight: 1.0,
-    low: "weak routes or few options",
-    high: "daycare, schools, parks fit",
+    icon: GraduationCap,
+    weight: 1.45,
+    low: "weak boundary fit or few care options",
+    high: "strong school path, daycare, parks",
   },
   {
     id: "commutefeel",
@@ -328,7 +376,7 @@ const visitFactors = [
     id: "community",
     label: "Community fit",
     icon: Star,
-    weight: 0.85,
+    weight: 0.95,
     low: "isolating location",
     high: "groceries, worship, friends nearby",
   },
@@ -370,6 +418,78 @@ function toNumber(value: string | number | undefined): number | undefined {
   const cleaned = String(value).replace(/[$,\s]/g, "");
   const parsed = Number(cleaned);
   return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function coerceMoney(value: string | number | undefined) {
+  return toNumber(value) ?? 0;
+}
+
+function moneyFromContext(context: string, patterns: RegExp[]) {
+  for (const pattern of patterns) {
+    const match = context.match(pattern);
+    if (!match?.[1]) continue;
+    const raw = Number(match[1].replace(/,/g, ""));
+    if (!Number.isFinite(raw)) continue;
+    const suffix = match[2]?.toLowerCase();
+    if (suffix === "m" || suffix === "million") return raw * 1000000;
+    if (suffix === "k" || raw < 1000) return raw * 1000;
+    return raw;
+  }
+  return 0;
+}
+
+function inferredFinance(profile: Profile) {
+  const context = profile.context.toLowerCase();
+  return {
+    income:
+      coerceMoney(profile.income) ||
+      moneyFromContext(context, [
+        /(?:combined\s+)?income(?:\s+is|\s*:)?\s*\$?\s*([\d,.]+)\s*(k|m|million)?/i,
+        /\$?\s*([\d,.]+)\s*(k|m|million)?\s+(?:combined\s+)?income/i,
+      ]),
+    savings:
+      coerceMoney(profile.savings) ||
+      moneyFromContext(context, [
+        /(?:savings|cash)(?:\s+is|\s*:)?\s*\$?\s*([\d,.]+)\s*(k|m|million)?/i,
+        /\$?\s*([\d,.]+)\s*(k|m|million)?\s+(?:in\s+)?(?:savings|cash)/i,
+      ]),
+    stocks:
+      coerceMoney(profile.stocks) ||
+      moneyFromContext(context, [
+        /(?:stocks|brokerage|equities)(?:\s+is|\s*:)?\s*\$?\s*([\d,.]+)\s*(k|m|million)?/i,
+        /\$?\s*([\d,.]+)\s*(k|m|million)?\s+(?:in\s+)?(?:stocks|brokerage|equities)/i,
+      ]),
+    retirement:
+      coerceMoney(profile.retirement) ||
+      moneyFromContext(context, [
+        /(?:retirement|401k|ira)(?:\s+is|\s*:)?\s*\$?\s*([\d,.]+)\s*(k|m|million)?/i,
+        /\$?\s*([\d,.]+)\s*(k|m|million)?\s+(?:in\s+)?(?:retirement|401k|ira)/i,
+      ]),
+    monthlyDebt: coerceMoney(profile.monthlyDebt),
+  };
+}
+
+function formatMoney(value?: number) {
+  if (!value || !Number.isFinite(value)) return "Not set";
+  return money.format(Math.round(value));
+}
+
+function monthlyPayment(principal: number, annualRate = ASSUMED_RATE, years = 30) {
+  const monthlyRate = annualRate / 12;
+  const payments = years * 12;
+  if (!principal || principal <= 0) return 0;
+  return (
+    (principal * monthlyRate * Math.pow(1 + monthlyRate, payments)) /
+    (Math.pow(1 + monthlyRate, payments) - 1)
+  );
+}
+
+function estimateMonthlyHousing(price: number, downPaymentPct: number) {
+  const downPayment = price * downPaymentPct;
+  const principal = Math.max(0, price - downPayment);
+  const mortgage = monthlyPayment(principal);
+  const taxInsuranceHoa = (price * ASSUMED_TAX_INSURANCE_RATE) / 12 + 450;
+  return mortgage + taxInsuranceHoa;
 }
 
 function terms(value: string) {
@@ -438,48 +558,190 @@ function formatNumber(value?: number, suffix = "") {
   return `${new Intl.NumberFormat("en-US").format(value)}${suffix}`;
 }
 
+function inferSuggestion(profile: Profile): Suggestion {
+  const context = profile.context.toLowerCase();
+  const finance = inferredFinance(profile);
+  const income = finance.income;
+  const savings = finance.savings;
+  const stocks = finance.stocks;
+  const monthlyDebt = finance.monthlyDebt;
+  const location =
+    profile.location.trim() ||
+    (context.includes("bellevue") ? "Bellevue, WA" : "Target area");
+  const hasChild =
+    /baby|daughter|son|child|kid|toddler|1[-\s]?year|one year/i.test(profile.context);
+  const indianFamily = /indian|desi|hindu|temple|grocery|spice/i.test(profile.context);
+  const safetyHigh =
+    profile.safetyPriority.toLowerCase().includes("high") ||
+    /safe|safety|crime|secure/i.test(profile.context);
+  const schoolHigh =
+    profile.schoolPriority.toLowerCase().includes("high") ||
+    /school|daycare|preschool|child|daughter|baby/i.test(profile.context);
+  const downPct = clamp((toNumber(profile.downPaymentPct) ?? 20) / 100, 0.05, 0.5);
+  const grossMonthly = income / 12;
+  const monthlyBudget = Math.max(0, grossMonthly * 0.32 - monthlyDebt);
+  const liquidAssets = savings + stocks * 0.75;
+  const reserve = Math.max(grossMonthly * DEFAULT_RESERVE_MONTHS, 95000);
+  const cashAvailableForPurchase = Math.max(0, liquidAssets - reserve);
+  const byCash = cashAvailableForPurchase / downPct;
+
+  let byIncome = 0;
+  if (monthlyBudget > 0) {
+    let low = 300000;
+    let high = 3500000;
+    for (let i = 0; i < 42; i += 1) {
+      const mid = (low + high) / 2;
+      if (estimateMonthlyHousing(mid, downPct) <= monthlyBudget) {
+        low = mid;
+      } else {
+        high = mid;
+      }
+    }
+    byIncome = low;
+  }
+
+  const bellevueMarket = location.toLowerCase().includes("bellevue");
+  const marketFloor = bellevueMarket ? 1650000 : 950000;
+  const paymentComfortMax = byIncome || marketFloor;
+  const liquidityMax = byCash || paymentComfortMax;
+  const blendedMax = Math.max(marketFloor, paymentComfortMax * 0.9);
+  const recommendedMax = Math.round(blendedMax / 25000) * 25000;
+  const safeMax = Math.max(marketFloor, recommendedMax || marketFloor);
+  const minPrice = bellevueMarket
+    ? 1200000
+    : Math.max(900000, Math.round(safeMax * 0.74 / 25000) * 25000);
+  const stretchPrice = Math.max(
+    safeMax + 50000,
+    Math.round(Math.max(paymentComfortMax, safeMax * 1.12) / 25000) * 25000
+  );
+  const beds = hasChild ? 3 : 2;
+  const baths = hasChild ? 2.5 : 2;
+  const commute = location.toLowerCase().includes("bellevue") ? 30 : 35;
+
+  const mustHaves = [
+    safetyHigh ? "safe residential street" : "comfortable street feel",
+    schoolHigh ? "excellent school boundary" : "school fit",
+    hasChild ? "daycare route, parks nearby, baby-safe stairs, quiet nursery" : "quiet bedrooms",
+    indianFamily ? "good kitchen ventilation, pantry, Indian grocery/community access" : "practical kitchen",
+    "inspection-friendly roof, HVAC, drainage, and electrical",
+  ].join(", ");
+
+  const dealBreakers = [
+    safetyHigh ? "crime concerns, poor lighting, unsafe street" : "poor street feel",
+    schoolHigh ? "poor school fit" : "school uncertainty",
+    "water damage, heavy road noise, unsafe stairs, poor kitchen exhaust, major unpriced repairs",
+  ].join(", ");
+
+  const neighborhoods = [
+    location,
+    safetyHigh ? "quiet low-traffic residential streets" : "comfortable neighborhood feel",
+    schoolHigh ? "Bellevue School District boundary verification" : "school and commute verification",
+    hasChild ? "parks, sidewalks, daycare route, pediatric access" : "parks and errands",
+    indianFamily ? "Indian grocery, restaurants, temple/community routes within a reasonable drive" : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const rationale = [
+    income
+      ? `${formatMoney(income)} income supports roughly ${formatMoney(monthlyBudget)} monthly housing before taxes and debt nuance.`
+      : "Add income to estimate the search band.",
+    `${formatMoney(savings)} savings plus a conservative portion of stocks leaves about ${formatMoney(cashAvailableForPurchase)} after a ${DEFAULT_RESERVE_MONTHS}-month reserve.`,
+    hasChild
+      ? "A 1-year-old makes safety, school path, daycare route, parks, stairs, and sleep noise primary filters."
+      : "Family context can be used to prioritize neighborhood fit.",
+    location.toLowerCase().includes("bellevue")
+      ? "Bellevue generally pushes the search toward townhomes or smaller single-family homes unless you stretch budget."
+      : "Location drives price band and commute assumptions.",
+  ];
+
+  const cautions = [
+    "Use this as a search range, then confirm with lender preapproval, taxes, insurance, HOA, and childcare costs.",
+    "Do not count retirement funds for down payment unless you deliberately choose to do that.",
+    liquidityMax < safeMax
+      ? "A 20% down payment plus closing costs may require selling more stock or choosing a lower down payment loan."
+      : "Liquidity appears workable for the suggested band, before closing costs and moving costs.",
+  ];
+
+  return {
+    minPrice,
+    maxPrice: safeMax,
+    stretchPrice,
+    downPayment: Math.round(safeMax * downPct),
+    cashReserve: Math.round(reserve),
+    monthlyBudget: Math.round(monthlyBudget),
+    beds,
+    baths,
+    commute,
+    location,
+    neighborhoods,
+    mustHaves,
+    dealBreakers,
+    rationale,
+    cautions,
+  };
+}
+
 function scoreHouse(house: House, profile: Profile): Score {
   const flags: string[] = [];
+  const suggestion = inferSuggestion(profile);
   const maxPrice = toNumber(profile.maxPrice);
   const minPrice = toNumber(profile.minPrice);
   const targetBeds = toNumber(profile.beds);
   const targetBaths = toNumber(profile.baths);
   const targetCommute = toNumber(profile.commute);
+  const safetyHigh = profile.safetyPriority.toLowerCase().includes("high");
+  const schoolHigh = profile.schoolPriority.toLowerCase().includes("high");
   let base = 62;
+  let financeFit = 58;
+  let familyFit = 58;
 
   if (house.price && maxPrice) {
     if (house.price <= maxPrice) {
       base += 8;
+      financeFit += 14;
     } else {
       const over = (house.price - maxPrice) / maxPrice;
       base -= over > 0.1 ? 18 : over > 0.05 ? 10 : 5;
+      financeFit -= over > 0.1 ? 28 : over > 0.05 ? 17 : 8;
       flags.push("over budget");
     }
   }
 
+  if (house.price && house.price > suggestion.stretchPrice) {
+    financeFit -= 16;
+    flags.push("finance stretch");
+  }
+
   if (house.price && minPrice && house.price < minPrice * 0.82) {
     base -= 3;
+    financeFit -= 4;
     flags.push("verify pricing");
   }
 
   if (targetBeds && house.beds) {
     base += house.beds >= targetBeds ? 8 : -Math.min(18, (targetBeds - house.beds) * 9);
+    familyFit += house.beds >= targetBeds ? 8 : -Math.min(14, (targetBeds - house.beds) * 7);
     if (house.beds < targetBeds) flags.push("bedroom gap");
   }
 
   if (targetBaths && house.baths) {
     base += house.baths >= targetBaths ? 6 : -Math.min(12, (targetBaths - house.baths) * 8);
+    familyFit += house.baths >= targetBaths ? 5 : -Math.min(10, (targetBaths - house.baths) * 7);
     if (house.baths < targetBaths) flags.push("bath gap");
   }
 
   if (targetCommute && house.commute) {
     if (house.commute <= targetCommute) {
       base += 7;
+      familyFit += 5;
     } else if (house.commute <= targetCommute + 10) {
       base -= 2;
+      familyFit -= 4;
       flags.push("commute stretch");
     } else {
       base -= 10;
+      familyFit -= 12;
       flags.push("long commute");
     }
   }
@@ -504,14 +766,33 @@ function scoreHouse(house: House, profile: Profile): Score {
   if (context.includes("baby") || context.includes("child")) {
     const safety = house.criteria.safety ?? 0;
     const noise = house.criteria.noise ?? 0;
-    base += safety > 0 ? 3 : safety < 0 ? -5 : 0;
-    base += noise > 0 ? 3 : noise < 0 ? -5 : 0;
+    const schools = house.criteria.schools ?? 0;
+    base += safety > 0 ? 5 : safety < 0 ? -9 : 0;
+    base += noise > 0 ? 4 : noise < 0 ? -8 : 0;
+    base += schools > 0 ? 5 : schools < 0 ? -9 : 0;
+    familyFit += safety * 8 + noise * 5 + schools * 8;
   }
   if (context.includes("indian") || context.includes("cook")) {
     const kitchen = house.criteria.kitchen ?? 0;
     const community = house.criteria.community ?? 0;
     base += kitchen > 0 ? 3 : kitchen < 0 ? -4 : 0;
     base += community > 0 ? 2 : 0;
+    familyFit += kitchen * 4 + community * 4;
+  }
+
+  if (safetyHigh) {
+    const safety = house.criteria.safety ?? 0;
+    const street = house.criteria.neighborhood ?? 0;
+    base += safety * 5 + street * 3;
+    familyFit += safety * 9 + street * 6;
+    if (safety < 0 || street < 0) flags.push("safety concern");
+  }
+
+  if (schoolHigh) {
+    const schools = house.criteria.schools ?? 0;
+    base += schools * 5;
+    familyFit += schools * 10;
+    if (schools < 0) flags.push("school concern");
   }
 
   const totalWeight = visitFactors.reduce((sum, factor) => sum + factor.weight, 0);
@@ -524,6 +805,8 @@ function scoreHouse(house: House, profile: Profile): Score {
 
   return {
     base: Math.round(clamp(base)),
+    financeFit: Math.round(clamp(financeFit)),
+    familyFit: Math.round(clamp(familyFit)),
     visitDelta,
     total,
     label: labelForScore(total),
@@ -673,9 +956,32 @@ export default function HomePage() {
   const selectedScore = selectedHouse ? scoreHouse(selectedHouse, profile) : null;
   const best = scoredHouses[0];
   const personalLenses = useMemo(() => getPersonalLenses(profile), [profile]);
+  const suggestion = useMemo(() => inferSuggestion(profile), [profile]);
 
   function updateProfile(key: keyof Profile, value: string) {
     setProfile((current) => ({ ...current, [key]: value }));
+  }
+
+  function applySuggestion() {
+    setProfile((current) => ({
+      ...current,
+      location: suggestion.location,
+      minPrice: String(suggestion.minPrice),
+      maxPrice: String(suggestion.maxPrice),
+      beds: String(suggestion.beds),
+      baths: String(suggestion.baths),
+      commute: String(suggestion.commute),
+      neighborhoods: suggestion.neighborhoods,
+      mustHaves: suggestion.mustHaves,
+      dealBreakers: suggestion.dealBreakers,
+      safetyPriority: suggestion.mustHaves.includes("safe")
+        ? "Very high"
+        : current.safetyPriority,
+      schoolPriority: suggestion.mustHaves.includes("school")
+        ? "Very high"
+        : current.schoolPriority,
+    }));
+    setSaveState("Suggestions applied");
   }
 
   function updateHouse(id: string, patch: Partial<House>) {
@@ -829,16 +1135,16 @@ export default function HomePage() {
           </div>
         </div>
         <div className="summary-stat">
+          <DollarSign size={18} />
+          <span>{formatMoney(suggestion.maxPrice)} suggested max</span>
+        </div>
+        <div className="summary-stat">
+          <GraduationCap size={18} />
+          <span>Safety + schools prioritized</span>
+        </div>
+        <div className="summary-stat">
           <Search size={18} />
           <span>{houses.length} homes tracked</span>
-        </div>
-        <div className="summary-stat">
-          <ClipboardCheck size={18} />
-          <span>{houses.filter((house) => house.status === "Seen").length} visited</span>
-        </div>
-        <div className="summary-stat">
-          <Star size={18} />
-          <span>{houses.filter((house) => house.status === "Contender").length} contenders</span>
         </div>
       </section>
 
@@ -847,6 +1153,124 @@ export default function HomePage() {
           <div className="section-heading">
             <SlidersHorizontal size={18} />
             <h2>Profile</h2>
+          </div>
+
+          <section className="recommendation-card" aria-label="Suggested buyer profile">
+            <div className="recommendation-head">
+              <div>
+                <p className="eyebrow">Suggested from context</p>
+                <h3>{suggestion.location}</h3>
+              </div>
+              <button className="secondary-button" type="button" onClick={applySuggestion}>
+                <Target size={16} />
+                Apply
+              </button>
+            </div>
+            <div className="recommendation-grid">
+              <div>
+                <span>Search band</span>
+                <strong>
+                  {formatMoney(suggestion.minPrice)} - {formatMoney(suggestion.maxPrice)}
+                </strong>
+              </div>
+              <div>
+                <span>Stretch cap</span>
+                <strong>{formatMoney(suggestion.stretchPrice)}</strong>
+              </div>
+              <div>
+                <span>Target home</span>
+                <strong>
+                  {suggestion.beds}+ bd / {suggestion.baths}+ ba
+                </strong>
+              </div>
+              <div>
+                <span>Cash buffer</span>
+                <strong>{formatMoney(suggestion.cashReserve)}</strong>
+              </div>
+            </div>
+            <p className="recommendation-note">
+              {suggestion.rationale[2]} {suggestion.cautions[2]} {suggestion.cautions[0]}
+            </p>
+          </section>
+
+          <div className="field-grid two">
+            <label>
+              <span>Location</span>
+              <input
+                value={profile.location}
+                onChange={(event) => updateProfile("location", event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Combined income</span>
+              <input
+                inputMode="numeric"
+                value={profile.income}
+                onChange={(event) => updateProfile("income", event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Savings</span>
+              <input
+                inputMode="numeric"
+                value={profile.savings}
+                onChange={(event) => updateProfile("savings", event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Stocks</span>
+              <input
+                inputMode="numeric"
+                value={profile.stocks}
+                onChange={(event) => updateProfile("stocks", event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Retirement</span>
+              <input
+                inputMode="numeric"
+                value={profile.retirement}
+                onChange={(event) => updateProfile("retirement", event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Monthly debts</span>
+              <input
+                inputMode="numeric"
+                value={profile.monthlyDebt}
+                onChange={(event) => updateProfile("monthlyDebt", event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Down payment %</span>
+              <input
+                inputMode="numeric"
+                value={profile.downPaymentPct}
+                onChange={(event) => updateProfile("downPaymentPct", event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Safety priority</span>
+              <select
+                value={profile.safetyPriority}
+                onChange={(event) => updateProfile("safetyPriority", event.target.value)}
+              >
+                <option>Very high</option>
+                <option>High</option>
+                <option>Normal</option>
+              </select>
+            </label>
+            <label>
+              <span>School priority</span>
+              <select
+                value={profile.schoolPriority}
+                onChange={(event) => updateProfile("schoolPriority", event.target.value)}
+              >
+                <option>Very high</option>
+                <option>High</option>
+                <option>Normal</option>
+              </select>
+            </label>
           </div>
 
           <div className="field-grid two">
@@ -941,6 +1365,15 @@ export default function HomePage() {
               );
             })}
           </div>
+
+          <div className="rationale-list">
+            {suggestion.rationale.map((item) => (
+              <div className="rationale-item" key={item}>
+                <Calculator size={16} />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
         </aside>
 
         <section className="listing-panel" aria-label="Listings">
@@ -1010,6 +1443,46 @@ export default function HomePage() {
                 value={draft.commute}
                 onChange={(event) => setDraft((current) => ({ ...current, commute: event.target.value }))}
               />
+            </label>
+            <label>
+              <span>School fit</span>
+              <select
+                value=""
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (!value) return;
+                  setDraft((current) => ({
+                    ...current,
+                    notes: `${current.notes}${current.notes ? "\n" : ""}School fit: ${value}`,
+                  }));
+                  event.currentTarget.value = "";
+                }}
+              >
+                <option value="">Add note</option>
+                <option>verify boundary</option>
+                <option>strong Bellevue school path</option>
+                <option>uncertain or weak school fit</option>
+              </select>
+            </label>
+            <label>
+              <span>Street safety</span>
+              <select
+                value=""
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (!value) return;
+                  setDraft((current) => ({
+                    ...current,
+                    notes: `${current.notes}${current.notes ? "\n" : ""}Street safety: ${value}`,
+                  }));
+                  event.currentTarget.value = "";
+                }}
+              >
+                <option value="">Add note</option>
+                <option>quiet low-traffic street</option>
+                <option>needs night check</option>
+                <option>busy road or safety concern</option>
+              </select>
             </label>
             <label className="wide">
               <span>Notes</span>
@@ -1087,6 +1560,8 @@ export default function HomePage() {
                     <div className="card-footer">
                       <span>{house.source}</span>
                       <span>{house.status}</span>
+                      <span>Family {score.familyFit}</span>
+                      <span>Finance {score.financeFit}</span>
                       <span>Visit {score.visitDelta >= 0 ? "+" : ""}{score.visitDelta}</span>
                       {score.flags.map((flag) => (
                         <span className="warning-tag" key={flag}>{flag}</span>
@@ -1141,6 +1616,16 @@ export default function HomePage() {
                   <span>Profile fit</span>
                   <meter min={0} max={100} value={selectedScore.base} />
                   <strong>{selectedScore.base}</strong>
+                </div>
+                <div>
+                  <span>Family fit</span>
+                  <meter min={0} max={100} value={selectedScore.familyFit} />
+                  <strong>{selectedScore.familyFit}</strong>
+                </div>
+                <div>
+                  <span>Finance fit</span>
+                  <meter min={0} max={100} value={selectedScore.financeFit} />
+                  <strong>{selectedScore.financeFit}</strong>
                 </div>
                 <div>
                   <span>Visit feel</span>
@@ -1245,6 +1730,8 @@ export default function HomePage() {
               <tr>
                 <th>Home</th>
                 <th>Score</th>
+                <th>Family</th>
+                <th>Finance</th>
                 <th>Price</th>
                 <th>Beds</th>
                 <th>Baths</th>
@@ -1260,6 +1747,8 @@ export default function HomePage() {
                 <tr key={house.id}>
                   <td>{house.address}</td>
                   <td>{score.total}</td>
+                  <td>{score.familyFit}</td>
+                  <td>{score.financeFit}</td>
                   <td>{house.price ? money.format(house.price) : "?"}</td>
                   <td>{house.beds ?? "?"}</td>
                   <td>{house.baths ?? "?"}</td>
