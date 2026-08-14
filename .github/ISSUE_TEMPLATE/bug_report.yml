@@ -1,0 +1,32 @@
+name: Bug report
+description: Report a reproducible HouseRank problem.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve HouseRank.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include the expected and actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      placeholder: "1. Open...\n2. Save...\n3. See..."
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and device
+      placeholder: Chrome 128, iPhone 15
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots are useful. Never include API keys or private buyer data.
