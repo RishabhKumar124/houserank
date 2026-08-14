@@ -10,7 +10,7 @@
 [![OpenAI](https://img.shields.io/badge/OpenAI-Responses_API-3157b7?style=flat-square&logo=openai)](https://platform.openai.com/docs/api-reference/responses)
 [![License: MIT](https://img.shields.io/badge/license-MIT-b77b18?style=flat-square)](LICENSE)
 
-[Try the app](https://housebuyer-app.vercel.app) | [Architecture](docs/ARCHITECTURE.md) | [Engineering decisions](docs/ENGINEERING_DECISIONS.md) | [Report an issue](https://github.com/RishabhKumar124/houserank/issues)
+[Try the app](https://housebuyer-app.vercel.app) | [Recruiter brief](docs/RECRUITER_BRIEF.md) | [Architecture](docs/ARCHITECTURE.md) | [Engineering decisions](docs/ENGINEERING_DECISIONS.md) | [Report an issue](https://github.com/RishabhKumar124/houserank/issues)
 
 </div>
 
@@ -21,6 +21,17 @@
 House hunting mixes objective constraints with impressions that are difficult to remember after the fifth showing. Listing sites are excellent discovery tools, but they do not answer the buyer-specific question: **which home is the best decision for me?**
 
 HouseRank keeps that decision legible. It combines a transparent local score, structured in-person observations, buyer context, and source-backed GPT research without pretending that an AI forecast is an appraisal.
+
+## Reviewer scan path
+
+| If you have... | Start here | What to look for |
+| --- | --- | --- |
+| **30 seconds** | The screenshot and system map | The product is real, mobile-aware, and built around a clear decision loop. |
+| **2 minutes** | [Recruiter brief](docs/RECRUITER_BRIEF.md) | Product judgment, AI boundaries, privacy stance, and why the architecture matters. |
+| **5 minutes** | [Architecture](docs/ARCHITECTURE.md) and [Engineering decisions](docs/ENGINEERING_DECISIONS.md) | How the scoring, OpenAI research, local persistence, and fair-housing constraints fit together. |
+| **10 minutes** | `app/api/analyze-houses/route.ts`, `app/page.tsx`, and `tests/product-contracts.test.mjs` | Structured AI output, source handling, frontend workflow, and testable product contracts. |
+
+![HouseRank decision system map](docs/assets/houserank-decision-map.svg)
 
 ## Product highlights
 
