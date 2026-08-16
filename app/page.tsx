@@ -5,6 +5,7 @@ import { RecommendationsTab } from "./components/tabs/RecommendationsTab";
 import { SavedTab } from "./components/tabs/SavedTab";
 import { VisitedTab } from "./components/tabs/VisitedTab";
 import { AddHousePanel, HouseDetailPanel } from "./components/HousePanels";
+import { ComparePanel } from "./components/ComparePanel";
 import { AssistantPanel } from "./components/AssistantPanel";
 import type {
   AIHouseAnalysis,
@@ -13,13 +14,16 @@ import type {
   House,
   HousePanel,
   HouseStatus,
+  ListingEnrichment,
   Profile,
+  ResearchSource,
   Score,
   Suggestion,
 } from "../lib/types";
 
 
 import {
+  X,
   AlertTriangle,
   Baby,
   Car,
@@ -52,11 +56,30 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
+type ListingImageAttachment = {
+  name: string;
+  mimeType: string;
+  dataUrl: string;
+  size: number;
+};
+
 const STORAGE_KEY = "houserank-local-v2";
 const APP_VERSION = "5";
 const ASSUMED_RATE = 0.067;
 const ASSUMED_TAX_INSURANCE_RATE = 0.0135;
 const DEFAULT_RESERVE_MONTHS = 6;
+const LISTING_IMAGE_TARGET_BYTES = 3_200_000;
+const LISTING_IMAGE_MAX_BYTES = 4_000_000;
+const LISTING_IMAGE_MAX_WIDTH = 2200;
+const LISTING_IMAGE_MAX_HEIGHT = 3200;
+const listingImageMimeByExtension: Record<string, string> = {
+  gif: "image/gif",
+  jpeg: "image/jpeg",
+  jpg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+};
+const listingImageMimeTypes = new Set(Object.values(listingImageMimeByExtension));
 
 const defaultProfile: Profile = {
   location: "Bellevue, WA",
@@ -165,6 +188,99 @@ const emptyDraft: DraftListing = {
   photo: "",
   notes: "",
 };
+
+function dataUrlByteSize(dataUrl: string) {
+  const base64 = dataUrl.split(",")[1] ?? "";
+  return Math.ceil((base64.length * 3) / 4);
+}
+
+function mimeTypeFromDataUrl(dataUrl: string) {
+  return dataUrl.match(/^data:([^;]+);base64,/i)?.[1]?.toLowerCase() ?? "image/jpeg";
+}
+
+function inferListingImageMime(file: File) {
+  if (listingImageMimeTypes.has(file.type)) {
+    return file.type;
+  }
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return listingImageMimeByExtension[extension] ?? "";
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Could not read the screenshot."));
+    reader.onload = () => resolve(String(reader.result));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImageElement(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = document.createElement("img");
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Could not prepare the screenshot."));
+    image.src = src;
+  });
+}
+
+async function compressListingImage(file: File) {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await loadImageElement(objectUrl);
+    const width = image.naturalWidth || image.width;
+    const height = image.naturalHeight || image.height;
+    if (!width || !height) return readFileAsDataUrl(file);
+
+    const scale = Math.min(
+      1,
+      LISTING_IMAGE_MAX_WIDTH / width,
+      LISTING_IMAGE_MAX_HEIGHT / height,
+    );
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+
+    const context = canvas.getContext("2d");
+    if (!context) return readFileAsDataUrl(file);
+
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    for (const quality of [0.92, 0.84, 0.76, 0.68, 0.6]) {
+      const dataUrl = canvas.toDataURL("image/jpeg", quality);
+      if (dataUrlByteSize(dataUrl) <= LISTING_IMAGE_TARGET_BYTES || quality === 0.6) {
+        return dataUrl;
+      }
+    }
+
+    return canvas.toDataURL("image/jpeg", 0.6);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+async function prepareListingImage(file: File): Promise<ListingImageAttachment> {
+  const mimeType = inferListingImageMime(file);
+  if (!mimeType) {
+    throw new Error("Upload a PNG, JPG, WEBP, or GIF listing screenshot.");
+  }
+
+  const shouldCompress = file.size > LISTING_IMAGE_TARGET_BYTES && mimeType !== "image/gif";
+  const dataUrl = shouldCompress ? await compressListingImage(file) : await readFileAsDataUrl(file);
+  const size = dataUrlByteSize(dataUrl);
+  if (size > LISTING_IMAGE_MAX_BYTES) {
+    throw new Error("Screenshot is too large. Crop to the listing facts and try again.");
+  }
+
+  return {
+    name: file.name || "Listing screenshot",
+    mimeType: mimeTypeFromDataUrl(dataUrl),
+    dataUrl,
+    size,
+  };
+}
 
 const visitFactors = [
   {
@@ -756,6 +872,8 @@ export default function HomePage() {
   const [houses, setHouses] = useState<House[]>(sampleHouses);
   const [draft, setDraft] = useState<DraftListing>(emptyDraft);
   const [selectedId, setSelectedId] = useState(sampleHouses[0].id);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [showCompare, setShowCompare] = useState(false);
   const [activeTab, setActiveTab] = useState<AppTab>("recommendations");
   const [housePanel, setHousePanel] = useState<HousePanel>(null);
   const [assistantOpen, setAssistantOpen] = useState(false);
@@ -763,6 +881,12 @@ export default function HomePage() {
   const [saveState, setSaveState] = useState("Saved locally");
   const [hydrated, setHydrated] = useState(false);
   const [draftError, setDraftError] = useState("");
+  const [enrichmentState, setEnrichmentState] = useState<{
+    status: "idle" | "loading" | "error";
+    message: string;
+    sources: ResearchSource[];
+  }>({ status: "idle", message: "", sources: [] });
+  const [listingImage, setListingImage] = useState<ListingImageAttachment | null>(null);
   const [analysisState, setAnalysisState] = useState<{
     status: "idle" | "loading" | "error";
     error: string;
@@ -960,6 +1084,123 @@ export default function HomePage() {
     updateHouse(id, { [key]: toNumber(value) } as Partial<House>);
   }
 
+  async function attachListingImage(file: File) {
+    setDraftError("");
+    setEnrichmentState({ status: "loading", message: "Preparing listing screenshot...", sources: [] });
+    setSaveState("Preparing listing screenshot");
+
+    try {
+      const image = await prepareListingImage(file);
+      setListingImage(image);
+      setEnrichmentState({
+        status: "idle",
+        message: `${image.name} ready for AI.`,
+        sources: [],
+      });
+      setSaveState("Listing screenshot attached");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Could not attach listing screenshot.";
+      setListingImage(null);
+      setEnrichmentState({ status: "error", message, sources: [] });
+      setSaveState("Screenshot needs attention");
+    }
+  }
+
+  function clearListingImage() {
+    setListingImage(null);
+    setEnrichmentState((current) => (
+      current.message.includes("screenshot") || current.message.includes("Screenshot")
+        ? { status: "idle", message: "", sources: [] }
+        : current
+    ));
+    setSaveState("Listing screenshot removed");
+  }
+
+  function mergeEnrichedDraft(current: DraftListing, enrichment: ListingEnrichment) {
+    const next = { ...current };
+    const incoming = enrichment.draft;
+    let filled = 0;
+    const inferredCurrentAddress = inferAddress(current.url.trim());
+    const canReplaceAddress =
+      !current.address.trim() ||
+      (inferredCurrentAddress && current.address.trim() === inferredCurrentAddress);
+
+    (["address", "price", "beds", "baths", "sqft", "year", "commute", "photo", "notes"] as const)
+      .forEach((key) => {
+        const value = incoming[key]?.trim();
+        if (!value) return;
+        const canReplace = key === "address" ? canReplaceAddress : !current[key].trim();
+        if (!canReplace) return;
+        next[key] = value;
+        filled += 1;
+      });
+
+    return { draft: next, filled };
+  }
+
+  async function enrichListing() {
+    const url = draft.url.trim();
+    const address = draft.address.trim();
+    if (!url && !address && !listingImage) {
+      setDraftError("Paste a listing link, attach a screenshot, or add an address first.");
+      return;
+    }
+    if (url && !/^https?:\/\//i.test(url)) {
+      setDraftError("Listing links must start with http:// or https://.");
+      return;
+    }
+
+    setDraftError("");
+    setEnrichmentState({
+      status: "loading",
+      message: listingImage ? "Reading listing screenshot..." : "Looking up public listing details...",
+      sources: [],
+    });
+    setSaveState(listingImage ? "AI screenshot read running" : "AI listing lookup running");
+
+    try {
+      const response = await fetch("/api/enrich-listing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url,
+          address,
+          profile,
+          image: listingImage
+            ? {
+                name: listingImage.name,
+                mimeType: listingImage.mimeType,
+                dataUrl: listingImage.dataUrl,
+              }
+            : undefined,
+        }),
+      });
+      const body = await response.json() as { enrichment?: ListingEnrichment; error?: string };
+      if (!response.ok || !body.enrichment) {
+        throw new Error(body.error || "AI listing lookup failed.");
+      }
+
+      const merged = mergeEnrichedDraft(draft, body.enrichment);
+      setDraft(merged.draft);
+      const missing = body.enrichment.missingFields.length
+        ? ` Missing: ${body.enrichment.missingFields.join(", ")}.`
+        : "";
+      const filledMessage = merged.filled
+        ? `AI filled ${merged.filled} field${merged.filled === 1 ? "" : "s"}. Review before saving.`
+        : "AI found details, but your filled fields were left unchanged.";
+      setEnrichmentState({
+        status: "idle",
+        message: `${filledMessage}${missing}`,
+        sources: body.enrichment.sources,
+      });
+      setSaveState(merged.filled ? "AI filled listing details" : "AI lookup completed");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "AI listing lookup failed.";
+      setEnrichmentState({ status: "error", message, sources: [] });
+      setSaveState("AI listing lookup needs attention");
+    }
+  }
+
   function addListing() {
     const url = draft.url.trim();
     const address = draft.address.trim() || inferAddress(url);
@@ -999,6 +1240,7 @@ export default function HomePage() {
     setHouses((current) => [next, ...current]);
     setSelectedId(next.id);
     setDraft(emptyDraft);
+    setListingImage(null);
     setActiveTab("saved");
     setHousePanel("details");
     setSaveState("Listing added");
@@ -1024,6 +1266,10 @@ export default function HomePage() {
     setActiveTab("visited");
     setHousePanel("visit");
     setSaveState("Visit started");
+  }
+
+  function onToggleCompare(id: string) {
+    setCompareIds(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
   }
 
   function deleteHouse(id: string) {
@@ -1122,7 +1368,7 @@ export default function HomePage() {
       <header className="sticky top-0 z-40 w-full border-b border-[#cfd7e5] bg-[#fffdf8]/90 backdrop-blur-xl">
         <div className="mobile-header mx-auto flex min-h-16 w-full max-w-6xl items-center justify-between gap-2 px-4 py-2 md:px-6">
           <div className="brand-mobile flex min-w-0 items-center gap-2 sm:gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#11756d] text-white shadow-sm">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#11756d] text-slate-900 shadow-sm">
               <Home size={18} />
             </div>
             <div className="min-w-0">
@@ -1134,7 +1380,7 @@ export default function HomePage() {
             <span className="hidden sm:inline-flex items-center text-xs font-medium text-zinc-500 bg-zinc-100 px-2 py-1 rounded-full mr-2">
               {saveState}
             </span>
-            <button onClick={() => setAssistantOpen(true)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#3157b7] text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#24428d] focus:outline-none focus:ring-2 focus:ring-[#3157b7] focus:ring-offset-2 sm:w-auto sm:gap-2 sm:px-3" aria-label="Open HouseRank AI">
+            <button onClick={() => setAssistantOpen(true)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#3157b7] text-xs font-bold text-slate-900 shadow-sm transition-colors hover:bg-[#24428d] focus:outline-none focus:ring-2 focus:ring-[#3157b7] focus:ring-offset-2 sm:w-auto sm:gap-2 sm:px-3" aria-label="Open HouseRank AI">
               <Sparkles size={16} /> <span className="hidden sm:inline">Ask AI</span>
             </button>
             <button onClick={installApp} aria-label="Install HouseRank" title="Install HouseRank" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1">
@@ -1155,7 +1401,7 @@ export default function HomePage() {
       </div>
 
       <main className="mx-auto w-full max-w-6xl min-w-0 overflow-x-clip px-3 pb-28 pt-5 min-[380px]:px-4 sm:py-8 md:px-6">
-        <nav className="mobile-tab-bar mb-8 grid grid-cols-4 gap-1 rounded-lg border border-[#cfd7e5] bg-[#e2e7ef]/95 p-1 shadow-sm backdrop-blur-md" aria-label="HouseRank sections">
+        <nav className="mobile-tab-bar mb-8 grid grid-cols-4 gap-1 rounded-2xl border border-slate-300/50 bg-white/50 p-1.5 shadow-sm backdrop-blur-xl" aria-label="HouseRank sections">
           {([
             ["recommendations", Search, "Recommendations", houses.length],
             ["saved", Heart, "Saved", houses.filter((h) => h.favorite).length],
@@ -1168,21 +1414,21 @@ export default function HomePage() {
                 key={tab}
                 onClick={() => { setActiveTab(tab); setHousePanel(null); }}
                 aria-current={isActive ? "page" : undefined}
-                className={`relative z-10 flex min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-[#11756d] focus:ring-offset-1 ${isActive ? 'text-white' : 'text-zinc-600 hover:bg-white/60 hover:text-zinc-950'}`}
+                className={`relative z-10 flex min-w-0 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:ring-offset-1 focus:ring-offset-slate-900 ${isActive ? 'text-white' : 'text-slate-600 hover:bg-white/60 hover:text-slate-900'}`}
               >
                 {isActive && (
                   <motion.div
                     layoutId="activeTabIndicator"
-                    className={`absolute inset-0 rounded-lg shadow-sm ${tab === "saved" ? "bg-[#3157b7]" : tab === "visited" ? "bg-[#b77b18]" : tab === "profile" ? "bg-[#d9654f]" : "bg-[#11756d]"}`}
+                    className={`absolute inset-0 rounded-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] ${tab === "saved" ? "bg-fuchsia-600/80" : tab === "visited" ? "bg-cyan-600/80" : tab === "profile" ? "bg-purple-600/80" : "bg-fuchsia-600/80"}`}
                     transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                   />
                 )}
                 <span className="relative flex min-w-0 items-center justify-center gap-2 z-20">
-                  <Icon size={16} className={isActive ? 'text-white' : 'text-zinc-500'} />
+                  <Icon size={16} className={isActive ? 'text-white' : 'text-slate-500'} />
                   <span className="tab-label tab-label-desktop truncate">{label}</span>
                   <span className="tab-label tab-label-mobile truncate">{tab === "recommendations" ? "Ranked" : label}</span>
                   {count !== null && (
-                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? 'bg-white/90 text-zinc-900' : 'bg-white/60 text-zinc-600'}`}>
+                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${isActive ? 'bg-white/70 text-slate-900 border border-slate-300' : 'bg-white/60 text-slate-600 border border-white/5'}`}>
                       {count}
                     </span>
                   )}
@@ -1202,8 +1448,8 @@ export default function HomePage() {
             className="w-full"
           >
             {activeTab === "profile" && <ProfileTab profile={profile} updateProfile={updateProfile} suggestion={suggestion} applySuggestion={applySuggestion} />}
-            {activeTab === "recommendations" && <RecommendationsTab houses={scoredHouses} formatMoney={formatMoney} openHouse={openHouse} toggleFavorite={toggleFavorite} markVisited={markVisited} deleteHouse={deleteHouse} setHousePanel={setHousePanel} selectedId={selectedId} />}
-            {activeTab === "saved" && <SavedTab houses={visibleHouses} formatMoney={formatMoney} openHouse={openHouse} toggleFavorite={toggleFavorite} markVisited={markVisited} deleteHouse={deleteHouse} analyzeHouses={analyzeHouses} analysisState={analysisState} selectedId={selectedId} />}
+            {activeTab === "recommendations" && <RecommendationsTab houses={scoredHouses} formatMoney={formatMoney} openHouse={openHouse} toggleFavorite={toggleFavorite} markVisited={markVisited} deleteHouse={deleteHouse} setHousePanel={setHousePanel} selectedId={selectedId} compareIds={compareIds} onToggleCompare={onToggleCompare} />}
+            {activeTab === "saved" && <SavedTab houses={visibleHouses} formatMoney={formatMoney} openHouse={openHouse} toggleFavorite={toggleFavorite} markVisited={markVisited} deleteHouse={deleteHouse} analyzeHouses={analyzeHouses} analysisState={analysisState} selectedId={selectedId} compareIds={compareIds} onToggleCompare={onToggleCompare} />}
             {activeTab === "visited" && <VisitedTab houses={visibleHouses} formatMoney={formatMoney} openHouse={openHouse} toggleFavorite={toggleFavorite} markVisited={markVisited} deleteHouse={deleteHouse} selectedId={selectedId} />}
           </motion.div>
         </AnimatePresence>
@@ -1228,9 +1474,9 @@ export default function HomePage() {
                 aria-label={housePanel === "add" ? "Add a home" : housePanel === "visit" ? "Visit scoring" : "Home details"}
                 className="house-sheet fixed inset-0 w-full bg-white shadow-2xl z-50 overflow-hidden flex flex-col border border-zinc-100 sm:inset-y-4 sm:left-auto sm:right-4 sm:max-w-xl sm:rounded-3xl"
               >
-                {housePanel === "add" && <AddHousePanel draft={draft} setDraft={setDraft} addListing={addListing} setHousePanel={setHousePanel} inferAddress={inferAddress} error={draftError} clearError={() => setDraftError("")} />}
+                {housePanel === "add" && <AddHousePanel draft={draft} setDraft={setDraft} addListing={addListing} setHousePanel={setHousePanel} inferAddress={inferAddress} error={draftError} clearError={() => setDraftError("")} enrichListing={enrichListing} enrichmentState={enrichmentState} />}
                 {housePanel !== "add" && selectedHouse && selectedScore && (
-                  <HouseDetailPanel house={selectedHouse} score={selectedScore} updateHouse={updateHouse} updateHouseNumber={updateHouseNumber} setCriterion={setCriterion} setHousePanel={setHousePanel} markVisited={markVisited} isVisitMode={housePanel === "visit"} visitFactors={visitFactors} statusOptions={statusOptions} />
+                  <HouseDetailPanel house={selectedHouse} score={selectedScore} updateHouse={updateHouse} updateHouseNumber={updateHouseNumber} setCriterion={setCriterion} setHousePanel={setHousePanel} markVisited={markVisited} isVisitMode={housePanel === "visit"} visitFactors={visitFactors} statusOptions={statusOptions} profile={profile} />
                 )}
               </motion.div>
             </>
@@ -1252,6 +1498,59 @@ export default function HomePage() {
               <AssistantPanel profile={profile} houses={scoredHouses} onClose={() => setAssistantOpen(false)} />
             </>
           ) : null}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showCompare && compareIds.length > 0 && (
+            <>
+              <motion.button
+                type="button"
+                aria-label="Close Compare"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowCompare(false)}
+                className="fixed inset-0 z-[60] cursor-default bg-slate-900/60 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ opacity: 0, y: 100 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 100 }}
+                className="fixed inset-0 z-[70] flex items-end justify-center pointer-events-none"
+              >
+                <div className="w-full max-h-screen overflow-y-auto pointer-events-auto">
+                  <ComparePanel houses={scoredHouses.filter(h => compareIds.includes(h.house.id))} onClose={() => setShowCompare(false)} formatMoney={formatMoney} />
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {compareIds.length > 0 && !showCompare && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 50, scale: 0.9 }}
+              className="fixed bottom-6 left-0 right-0 z-40 flex justify-center pointer-events-none"
+            >
+              <div className="pointer-events-auto bg-slate-900/80 backdrop-blur-xl border border-slate-700 p-2 rounded-full shadow-2xl flex items-center gap-3">
+                <span className="text-white text-sm font-semibold pl-3">{compareIds.length} selected</span>
+                <button
+                  onClick={() => setShowCompare(true)}
+                  className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-4 py-2 rounded-full text-sm font-bold shadow-[0_0_15px_rgba(192,38,211,0.5)] transition-all"
+                >
+                  Compare
+                </button>
+                <button
+                  onClick={() => setCompareIds([])}
+                  className="p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
     </div>

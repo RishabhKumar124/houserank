@@ -44,11 +44,11 @@ This document captures the choices that shape HouseRank and the tradeoffs behind
 
 ## 6. Avoid scraping listing portals
 
-**Decision:** Accept listing links and manual details without attempting portal login or scraping.
+**Decision:** Use AI-assisted screenshot reading or web research to prefill publicly visible listing facts, without attempting portal login, private MLS access, or direct scraping.
 
-**Why:** A portfolio-quality product should be honest about data rights and integration boundaries. Production listing sync should use approved APIs, licensed feeds, or user-authorized exports.
+**Why:** A portfolio-quality product should be honest about data rights and integration boundaries. User-provided screenshots make Redfin-style pages reliable without bypassing portal controls. Production listing sync should use approved APIs, licensed feeds, or user-authorized exports.
 
-**Tradeoff:** Buyers sometimes need to enter facts manually, and research confidence drops when a listing cannot be verified.
+**Tradeoff:** Buyers may still need to enter or correct facts manually, and intake confidence drops when the screenshot does not show a needed field or a listing cannot be verified from public sources.
 
 ## 7. Treat fair housing as a product constraint
 

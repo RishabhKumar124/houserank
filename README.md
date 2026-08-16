@@ -38,6 +38,7 @@ HouseRank keeps that decision legible. It combines a transparent local score, st
 | Capability | What makes it useful |
 | --- | --- |
 | **Buyer-aware profile** | Turns budget, income, liquidity, family logistics, commute, schools, must-haves, and free-form context into a reusable decision lens. |
+| **AI listing intake** | Paste a listing link/address or attach a Redfin screenshot; server-side GPT prefills visible public property facts for review before saving. |
 | **Transparent baseline score** | Ranks every tracked home using deterministic affordability, property-fit, commute, and visit criteria. The math works without AI. |
 | **Deep GPT research** | Automatically researches each newly saved home, returning a personal buying score, risk-adjusted investment score, five-year value range, confidence, assumptions, risks, and clickable sources. |
 | **20-factor tour scorecard** | Captures noise, light, smell, layout, stairs, storage, street feel, maintenance signals, and the details that disappear after a busy tour day. |
@@ -54,7 +55,7 @@ HouseRank keeps that decision legible. It combines a transparent local score, st
 ## How it works
 
 1. **Define the buyer** - add financial boundaries and describe the life the home needs to support.
-2. **Track candidates** - paste a listing URL or enter a property manually.
+2. **Track candidates** - paste a listing URL/address or attach a listing screenshot, use AI to prefill public details, then review and save.
 3. **Compare the baseline** - every home receives the same deterministic scoring treatment.
 4. **Save for deep analysis** - saved homes automatically run independent, source-backed GPT research in the background.
 5. **Score the visit** - record structured observations from `-2` to `+2` while the showing is still fresh.
@@ -78,7 +79,7 @@ flowchart LR
     Score["Deterministic\nscoring engine"]
     Store["Browser storage\n+ JSON backup"]
     API["Server-only\nNext.js routes"]
-    OpenAI["OpenAI Responses API\n+ web search"]
+    OpenAI["OpenAI Responses API\n+ vision/web search"]
     Sources["Public web sources"]
 
     UI --> Score
@@ -148,7 +149,7 @@ GitHub Actions runs the quality gate and the Next.js production build as indepen
 
 ## Honest limitations
 
-- HouseRank does not scrape or log in to Zillow, Redfin, or Realtor. Portal integrations should use approved APIs, partner feeds, or user-authorized exports.
+- HouseRank does not scrape or log in to Zillow, Redfin, or Realtor. Listing screenshots are user-provided image inputs; production portal sync should use approved APIs, partner feeds, or user-authorized exports.
 - Automatic deep research completes while the app remains open. Durable work after force-closing the browser would require authenticated server storage and a job queue.
 - Browser-local data does not sync across devices yet.
 - The bundled sample properties are synthetic demonstration data.

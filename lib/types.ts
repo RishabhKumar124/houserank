@@ -61,17 +61,52 @@ export type AIHouseAnalysis = {
   stale?: boolean;
 };
 
+export type ListingEnrichment = {
+  draft: Partial<DraftListing>;
+  confidence: AnalysisConfidence;
+  summary: string;
+  missingFields: string[];
+  assumptions: string[];
+  sources: ResearchSource[];
+  enrichedAt: string;
+  model: string;
+};
+
+export type Destination = {
+  name: string;
+  minutes: number;
+};
+
+export type OfferDetails = {
+  offerPrice: number;
+  earnestMoney: number;
+  contingencies: {
+    inspection: boolean;
+    financing: boolean;
+    appraisal: boolean;
+  };
+  sellerConcessions: number;
+  closingDate: string;
+  expirationDate: string;
+};
+
 export type House = {
   id: string;
   source: string;
   url: string;
   address: string;
   price?: number;
+  propertyTaxRate?: number;
+  hoaFees?: number;
+  homeownersInsurance?: number;
+  estimatedRepairs?: number;
   beds?: number;
   baths?: number;
   sqft?: number;
   year?: number;
   commute?: number;
+  destinations?: Destination[];
+  schoolRating?: number;
   photo: string;
   notes: string;
   status: HouseStatus;
@@ -79,6 +114,7 @@ export type House = {
   visitedAt?: string;
   criteria: Record<string, number>;
   aiAnalysis?: AIHouseAnalysis;
+  offerDetails?: OfferDetails;
 };
 
 export type AppTab = "recommendations" | "saved" | "visited" | "profile";

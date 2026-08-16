@@ -38,6 +38,14 @@ flowchart TB
 
 `app/api/assistant/route.ts` provides bounded conversational help over the current profile and tracked homes.
 
+`app/api/enrich-listing/route.ts` powers add-home intake:
+
+1. Accepts a listing URL/address and an optional user-provided listing screenshot from the browser form.
+2. Uses the OpenAI Responses API with image input to read screenshot-visible facts, or web search when no screenshot is provided.
+3. Enforces a strict JSON schema for form fields, missing fields, assumptions, and sources.
+4. Normalizes numeric fields before returning them to the browser.
+5. Prefills only empty draft fields so the buyer reviews the result before saving.
+
 `app/api/analyze-houses/route.ts` performs deep property research:
 
 1. Validates the request and caps the accepted batch size.

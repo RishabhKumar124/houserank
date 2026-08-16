@@ -60,12 +60,34 @@ test("saved homes expose automatic GPT fit, investment, forecast, and sorting co
   assert.match(savedTab, /5-year growth/);
   assert.match(savedTab, /Web sources/);
   assert.match(savedTab, /Saved homes start deep analysis automatically/);
+  assert.match(savedTab, /Remove from Saved/);
   assert.match(page, /autoAnalysisStartedRef/);
   assert.match(page, /Promise\.allSettled/);
   assert.match(analysisRoute, /web_search/);
   assert.match(analysisRoute, /json_schema/);
   assert.match(analysisRoute, /risk-adjusted investment quality/i);
   assert.match(types, /AIHouseAnalysis/);
+});
+
+test("add-home intake can enrich listing details with AI", async () => {
+  const [page, panel, route, types] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/HousePanels.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/enrich-listing/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/types.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /\/api\/enrich-listing/);
+  assert.match(page, /mergeEnrichedDraft/);
+  assert.match(page, /prepareListingImage/);
+  assert.match(panel, /Fill Details with AI/);
+  assert.match(panel, /Redfin screenshot/);
+  assert.match(route, /web_search/);
+  assert.match(route, /input_image/);
+  assert.match(route, /imageInput/);
+  assert.match(route, /json_schema/);
+  assert.match(route, /AI listing intake is not configured/);
+  assert.match(types, /ListingEnrichment/);
 });
 
 test("assistant API reports missing server configuration safely", async () => {
@@ -85,6 +107,28 @@ test("assistant API reports missing server configuration safely", async () => {
     }));
     assert.equal(askResponse.status, 503);
     assert.match((await askResponse.json()).error, /not configured/i);
+  } finally {
+    if (previousKey) process.env.OPENAI_API_KEY = previousKey;
+  }
+});
+
+test("listing enrichment API reports missing server configuration safely", async () => {
+  const previousKey = process.env.OPENAI_API_KEY;
+  delete process.env.OPENAI_API_KEY;
+  const route = await import("../app/api/enrich-listing/route.ts");
+
+  try {
+    const statusResponse = await route.GET();
+    assert.equal(statusResponse.status, 200);
+    assert.deepEqual(await statusResponse.json(), { configured: false, model: "gpt-5-mini", webSearch: true, imageInput: true });
+
+    const enrichmentResponse = await route.POST(new Request("http://localhost/api/enrich-listing", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ url: "https://www.redfin.com/WA/Bellevue/example" }),
+    }));
+    assert.equal(enrichmentResponse.status, 503);
+    assert.match((await enrichmentResponse.json()).error, /not configured/i);
   } finally {
     if (previousKey) process.env.OPENAI_API_KEY = previousKey;
   }

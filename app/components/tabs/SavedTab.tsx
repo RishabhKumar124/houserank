@@ -6,11 +6,13 @@ import {
   CircleAlert,
   ExternalLink,
   Heart,
+  HeartOff,
   RefreshCw,
   ShieldCheck,
   Sparkles,
   TrendingUp,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { HouseCard } from "../HouseCard";
 import type { HousePanel, ScoredHouse } from "../../../lib/types";
 
@@ -32,6 +34,8 @@ type SavedTabProps = {
   analyzeHouses: (ids?: string[]) => Promise<void>;
   analysisState: AnalysisState;
   selectedId: string;
+  compareIds: string[];
+  onToggleCompare: (id: string) => void;
 };
 
 const sortLabels: Record<SortMode, string> = {
@@ -57,6 +61,8 @@ export function SavedTab({
   analyzeHouses,
   analysisState,
   selectedId,
+  compareIds,
+  onToggleCompare,
 }: SavedTabProps) {
   const [sortMode, setSortMode] = useState<SortMode>("buying");
   const analyzedCount = houses.filter(({ house }) => house.aiAnalysis).length;
@@ -89,13 +95,13 @@ export function SavedTab({
             type="button"
             onClick={() => void analyzeHouses()}
             disabled={isLoading || houses.length === 0}
-            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#11756d] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#0d5d57] disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#11756d] px-4 text-sm font-bold text-slate-900 shadow-sm transition hover:bg-[#0d5d57] disabled:cursor-not-allowed disabled:opacity-60 md:w-auto"
           >
             {isLoading ? <RefreshCw className="animate-spin" size={18} /> : <Sparkles size={18} />}
             {isLoading ? "Deep research running..." : analyzedCount ? "Refresh GPT analysis" : "Start deep analysis"}
           </button>
         </div>
-        <div className="grid grid-cols-1 border-t border-[#bedbd5] bg-white/55 sm:grid-cols-3">
+        <div className="grid grid-cols-1 border-t border-[#bedbd5] bg-white/505 sm:grid-cols-3">
           <div className="flex items-center gap-3 border-b border-[#bedbd5] px-4 py-3 sm:border-b-0 sm:border-r">
             <ShieldCheck size={18} className="text-[#11756d]" />
             <span className="text-xs font-bold text-zinc-700">Personal fit + affordability</span>
@@ -152,7 +158,20 @@ export function SavedTab({
                 markVisited={markVisited}
                 deleteHouse={deleteHouse}
                 isSelected={house.id === selectedId}
+                isComparing={compareIds.includes(house.id)}
+                onToggleCompare={onToggleCompare}
               />
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => toggleFavorite(house.id)}
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-rose-200 bg-white px-3 text-xs font-bold text-rose-700 shadow-sm transition hover:bg-rose-50 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-1"
+                  aria-label={`Remove ${house.address} from saved homes`}
+                >
+                  <HeartOff size={15} /> Remove from Saved
+                </button>
+              </div>
 
               {analysis ? (
                 <article className="overflow-hidden rounded-lg border border-zinc-200 bg-[#fffdf8] shadow-sm" aria-label={`GPT research for ${house.address}`}>
@@ -238,7 +257,7 @@ export function SavedTab({
                     <strong className="text-sm text-[#24428d]">{refreshing ? "Deep research is running" : "Waiting for GPT research"}</strong>
                     <p className="mt-1 text-xs leading-relaxed text-zinc-600">{refreshing ? "You can keep using HouseRank. This result will appear automatically." : "Saved homes start deep analysis automatically when the app is open."}</p>
                   </div>
-                  <button type="button" disabled={isLoading} onClick={() => void analyzeHouses([house.id])} className="flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-[#3157b7] px-3 text-xs font-bold text-white disabled:opacity-60">
+                  <button type="button" disabled={isLoading} onClick={() => void analyzeHouses([house.id])} className="flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-[#3157b7] px-3 text-xs font-bold text-slate-900 disabled:opacity-60">
                     {refreshing ? <RefreshCw className="animate-spin" size={15} /> : <Sparkles size={15} />} {refreshing ? "Running" : "Retry"}
                   </button>
                 </div>
@@ -247,11 +266,24 @@ export function SavedTab({
           );
         })}
         {houses.length === 0 && (
-          <div className="col-span-full flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-zinc-300 bg-white/70 py-20 text-center">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-rose-50 text-rose-500"><Heart size={24} /></div>
-            <h3 className="text-lg font-medium text-zinc-900">No saved homes</h3>
-            <p className="mt-1 max-w-sm text-sm text-zinc-500">Click the heart icon on any recommendation to save it here.</p>
-          </div>
+           <motion.div 
+             initial={{ opacity: 0, scale: 0.9 }}
+             animate={{ opacity: 1, scale: 1 }}
+             className="col-span-full py-20 flex flex-col items-center justify-center text-center border-2 border-dashed border-slate-300/50 rounded-3xl bg-white/50 backdrop-blur-sm"
+           >
+             <motion.div 
+               animate={{ 
+                 boxShadow: ["0 0 10px rgba(244,63,94,0.2)", "0 0 30px rgba(244,63,94,0.6)", "0 0 10px rgba(244,63,94,0.2)"],
+                 scale: [1, 1.05, 1]
+               }}
+               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+               className="w-14 h-14 bg-gradient-to-br from-rose-500/20 to-red-500/20 border border-rose-500/30 text-rose-400 flex items-center justify-center rounded-2xl mb-6 shadow-[0_0_20px_rgba(244,63,94,0.3)]"
+             >
+               <Heart size={28} fill="currentColor" />
+             </motion.div>
+             <h3 className="text-xl font-bold text-slate-900 drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]">No saved homes</h3>
+             <p className="text-sm text-slate-500 max-w-sm mt-2">Click the heart icon on any recommendation to save it here.</p>
+           </motion.div>
         )}
       </div>
 

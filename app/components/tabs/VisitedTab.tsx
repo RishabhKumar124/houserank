@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { HouseCard } from "../HouseCard";
 import { History } from "lucide-react";
 import type { HousePanel, ScoredHouse } from "../../../lib/types";
@@ -29,13 +30,24 @@ export function VisitedTab({ houses, formatMoney, openHouse, toggleFavorite, mar
           />
         ))}
         {houses.length === 0 && (
-           <div className="col-span-full py-20 flex flex-col items-center justify-center text-center border-2 border-dashed border-zinc-200 rounded-3xl bg-zinc-50/50">
-             <div className="w-12 h-12 bg-blue-50 text-blue-500 flex items-center justify-center rounded-2xl mb-4">
-               <History size={24} />
-             </div>
-             <h3 className="text-lg font-medium text-zinc-900">No visits recorded yet</h3>
-             <p className="text-sm text-zinc-500 max-w-sm mt-1">Mark a home as visited to unlock the detailed scoring rubric for noise, light, layout, and safety.</p>
-           </div>
+           <motion.div 
+             initial={{ opacity: 0, scale: 0.9 }}
+             animate={{ opacity: 1, scale: 1 }}
+             className="col-span-full py-20 flex flex-col items-center justify-center text-center border-2 border-dashed border-slate-300/50 rounded-3xl bg-white/50 backdrop-blur-sm"
+           >
+             <motion.div 
+               animate={{ 
+                 boxShadow: ["0 0 10px rgba(6,182,212,0.2)", "0 0 30px rgba(6,182,212,0.6)", "0 0 10px rgba(6,182,212,0.2)"],
+                 scale: [1, 1.05, 1]
+               }}
+               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+               className="w-14 h-14 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 text-cyan-400 flex items-center justify-center rounded-2xl mb-6 shadow-[0_0_20px_rgba(6,182,212,0.3)]"
+             >
+               <History size={28} />
+             </motion.div>
+             <h3 className="text-xl font-bold text-slate-900 drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]">No visits recorded yet</h3>
+             <p className="text-sm text-slate-500 max-w-sm mt-2">Mark a home as visited to unlock the detailed scoring rubric for noise, light, layout, and safety.</p>
+           </motion.div>
         )}
       </div>
     </div>
