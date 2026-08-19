@@ -1,11 +1,9 @@
 import {
   ClipboardCheck,
   ExternalLink,
-  FileImage,
   LoaderCircle,
   Plus,
   Sparkles,
-  Trash2,
   X,
   Calculator,
 } from "lucide-react";
@@ -18,24 +16,30 @@ import type {
   Score,
 } from "../../lib/types";
 
+type ProfileFinance = {
+  downPaymentPct?: number | string;
+  interestRate?: number | string;
+  [key: string]: unknown;
+};
+
 type VisitFactor = {
   id: string;
   label: string;
   low: string;
   high: string;
+  [key: string]: unknown;
 };
 
-const inputClass =
-  "w-full rounded-lg border border-slate-300/50 bg-white/50 px-3 py-2.5 text-base text-slate-900 placeholder-slate-400 outline-none focus:border-fuchsia-500 focus:ring-2 focus:ring-fuchsia-500/50 backdrop-blur-md transition-all sm:text-sm";
-const labelClass = "mb-1 block text-xs font-medium text-slate-700";
+const labelClass = "mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-500";
+const inputClass = "w-full rounded-lg border border-slate-300/50 bg-white/60 px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 backdrop-blur-md focus:border-cyan-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]";
 
 type AddHousePanelProps = {
   draft: DraftListing;
   setDraft: Dispatch<SetStateAction<DraftListing>>;
   addListing: () => void;
   setHousePanel: Dispatch<SetStateAction<HousePanel>>;
-  inferAddress: (value: string) => string;
-  error: string;
+  inferAddress: (url: string) => string;
+  error: string | null;
   clearError: () => void;
   enrichListing: () => void;
   enrichmentState: {
@@ -43,7 +47,6 @@ type AddHousePanelProps = {
     message: string;
     sources: Array<{ title: string; url: string }>;
   };
-  
 };
 
 export function AddHousePanel({
@@ -56,7 +59,6 @@ export function AddHousePanel({
   clearError,
   enrichListing,
   enrichmentState,
-  
 }: AddHousePanelProps) {
   function update(key: keyof DraftListing, value: string) {
     clearError();
@@ -98,17 +100,23 @@ export function AddHousePanel({
         {enrichmentState.message ? (
           <div
             aria-live="polite"
-            className={`rounded-lg border px-3 py-2 text-sm ${
+            className={`rounded-lg border p-3 text-xs leading-relaxed ${
               enrichmentState.status === "error"
-                ? "border-rose-200 bg-rose-50 text-rose-800"
-                : "border-blue-100 bg-blue-50 text-blue-800"
+                ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
+                : "border-[#3157b7]/30 bg-[#3157b7]/10 text-slate-700"
             }`}
           >
             <p>{enrichmentState.message}</p>
             {enrichmentState.sources.length ? (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {enrichmentState.sources.slice(0, 3).map((source) => (
-                  <a key={source.url} href={source.url} target="_blank" rel="noreferrer" className="rounded-md bg-white/80 px-2 py-1 text-xs font-semibold text-blue-700 underline-offset-2 hover:underline">
+              <div className="mt-2 flex flex-wrap gap-1.5 pt-1">
+                {enrichmentState.sources.map((source) => (
+                  <a
+                    key={source.url}
+                    href={source.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded border border-[#3157b7]/30 bg-[#3157b7]/20 px-2 py-0.5 font-medium text-slate-700 transition-colors hover:border-[#3157b7]/50 hover:text-slate-900"
+                  >
                     {source.title}
                   </a>
                 ))}
@@ -116,29 +124,21 @@ export function AddHousePanel({
             ) : null}
           </div>
         ) : null}
-        <label className="block">
-          <span className={labelClass}>Address *</span>
-          <input className={inputClass} value={draft.address} placeholder="123 Main St, Bellevue, WA" onChange={(event) => update("address", event.target.value)} />
-        </label>
 
-        <div className="grid grid-cols-2 gap-3">
-          <label><span className={labelClass}>Price *</span><input className={inputClass} inputMode="numeric" value={draft.price} placeholder="1500000" onChange={(event) => update("price", event.target.value)} /></label>
-          <label><span className={labelClass}>Commute (min)</span><input className={inputClass} inputMode="numeric" value={draft.commute} onChange={(event) => update("commute", event.target.value)} /></label>
-          <label><span className={labelClass}>Beds</span><input className={inputClass} inputMode="decimal" value={draft.beds} onChange={(event) => update("beds", event.target.value)} /></label>
-          <label><span className={labelClass}>Baths</span><input className={inputClass} inputMode="decimal" value={draft.baths} onChange={(event) => update("baths", event.target.value)} /></label>
-          <label><span className={labelClass}>Square feet</span><input className={inputClass} inputMode="numeric" value={draft.sqft} onChange={(event) => update("sqft", event.target.value)} /></label>
-          <label><span className={labelClass}>Year built</span><input className={inputClass} inputMode="numeric" value={draft.year} onChange={(event) => update("year", event.target.value)} /></label>
+        <div className="grid grid-cols-2 gap-3 pt-2">
+          <label className="col-span-2"><span className={labelClass}>Address</span><input className={inputClass} value={draft.address} placeholder="123 Example Way, City, State" onChange={(event) => update("address", event.target.value)} /></label>
+          <label><span className={labelClass}>Price</span><input className={inputClass} inputMode="numeric" value={draft.price} placeholder="550000" onChange={(event) => update("price", event.target.value)} /></label>
+          <label><span className={labelClass}>Beds</span><input className={inputClass} inputMode="decimal" value={draft.beds} placeholder="3" onChange={(event) => update("beds", event.target.value)} /></label>
+          <label><span className={labelClass}>Baths</span><input className={inputClass} inputMode="decimal" value={draft.baths} placeholder="2" onChange={(event) => update("baths", event.target.value)} /></label>
+          <label><span className={labelClass}>Square feet</span><input className={inputClass} inputMode="numeric" value={draft.sqft} placeholder="1800" onChange={(event) => update("sqft", event.target.value)} /></label>
+          <label><span className={labelClass}>Year built</span><input className={inputClass} inputMode="numeric" value={draft.year} placeholder="2016" onChange={(event) => update("year", event.target.value)} /></label>
+          <label><span className={labelClass}>Commute (min)</span><input className={inputClass} inputMode="numeric" value={draft.commute} placeholder="25" onChange={(event) => update("commute", event.target.value)} /></label>
+          <label className="col-span-2"><span className={labelClass}>Photo URL (optional)</span><input className={inputClass} type="url" value={draft.photo} placeholder="https://..." onChange={(event) => update("photo", event.target.value)} /></label>
+          <label className="col-span-2"><span className={labelClass}>Notes</span><textarea className={`${inputClass} min-h-24 resize-y`} value={draft.notes} placeholder="Initial impression, neighborhood notes..." onChange={(event) => update("notes", event.target.value)} /></label>
         </div>
 
-        <label className="block"><span className={labelClass}>Photo URL</span><input className={inputClass} type="url" value={draft.photo} onChange={(event) => update("photo", event.target.value)} /></label>
-        <label className="block"><span className={labelClass}>Initial notes</span><textarea className={`${inputClass} min-h-24 resize-y`} value={draft.notes} onChange={(event) => update("notes", event.target.value)} /></label>
+        <button type="button" onClick={addListing} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-fuchsia-600 to-purple-600 font-semibold text-white shadow-[0_0_20px_rgba(192,38,211,0.4)] transition-all hover:shadow-[0_0_25px_rgba(192,38,211,0.6)]"><Plus size={18} /> Add Property to Compare</button>
       </div>
-
-      <footer className="absolute inset-x-0 bottom-0 z-10 border-t border-slate-300/50 bg-white/90 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:static sm:p-6 backdrop-blur-xl">
-        <button type="button" onClick={addListing} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-fuchsia-600 to-purple-600 px-4 font-semibold text-white shadow-[0_0_20px_rgba(192,38,211,0.5)] transition-all hover:shadow-[0_0_30px_rgba(192,38,211,0.8)] focus:outline-none focus:ring-2 focus:ring-fuchsia-500 focus:ring-offset-2 focus:ring-offset-slate-900">
-          <Plus size={18} /> Add Home to Tracker
-        </button>
-      </footer>
     </div>
   );
 }
@@ -146,14 +146,15 @@ export function AddHousePanel({
 type HouseDetailPanelProps = {
   house: House;
   score: Score;
-  updateHouse: (id: string, patch: Partial<House>) => void;
-  updateHouseNumber: (id: string, key: keyof House, value: string) => void;
-  setCriterion: (id: string, criterionId: string, value: number) => void;
+  updateHouse: (id: string, updates: Partial<House>) => void;
+  updateHouseNumber: (id: string, field: "price" | "beds" | "baths" | "sqft" | "year" | "commute" | "propertyTaxRate" | "hoaFees" | "homeownersInsurance" | "estimatedRepairs", raw: string) => void;
+  setCriterion: (houseId: string, criterionId: string, value: number) => void;
   setHousePanel: Dispatch<SetStateAction<HousePanel>>;
   markVisited: (id: string) => void;
   isVisitMode: boolean;
   visitFactors: readonly VisitFactor[];
   statusOptions: HouseStatus[];
+  profile?: ProfileFinance;
 };
 
 export function HouseDetailPanel({
@@ -168,12 +169,14 @@ export function HouseDetailPanel({
   visitFactors,
   statusOptions,
   profile,
-}: HouseDetailPanelProps & { profile?: any }) {
+}: HouseDetailPanelProps) {
   const calculatePITI = () => {
     if (!house.price || !profile) return 0;
-    const downPayment = house.price * (profile.downPaymentPct / 100);
+    const downPaymentPct = Number(profile.downPaymentPct ?? 20) || 20;
+    const downPayment = house.price * (downPaymentPct / 100);
     const principal = house.price - downPayment;
-    const r = profile.interestRate / 100 / 12;
+    const interestRate = Number(profile.interestRate ?? 6.8) || 6.8;
+    const r = interestRate / 100 / 12;
     const n = 360;
     const mortgage = (principal * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
     const tax = (house.price * ((house.propertyTaxRate || 1.2) / 100)) / 12;
@@ -245,9 +248,9 @@ export function HouseDetailPanel({
               <label><span className={labelClass}>Closing Date</span><input type="date" className={inputClass} value={house.offerDetails?.closingDate ?? ""} onChange={(e) => updateHouse(house.id, { offerDetails: { ...(house.offerDetails || { offerPrice: 0, earnestMoney: 0, sellerConcessions: 0, expirationDate: "", contingencies: { inspection: false, financing: false, appraisal: false } }), closingDate: e.target.value } })} /></label>
             </div>
             <div className="flex gap-4 pt-2">
-              <label className="flex items-center gap-2"><input type="checkbox" checked={house.offerDetails?.contingencies?.inspection ?? false} onChange={(e) => updateHouse(house.id, { offerDetails: { ...(house.offerDetails as any), contingencies: { ...(house.offerDetails?.contingencies as any), inspection: e.target.checked } } })} className="rounded border-slate-300 bg-white/60 text-fuchsia-500 focus:ring-fuchsia-500" /><span className="text-sm text-slate-700">Inspection</span></label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={house.offerDetails?.contingencies?.financing ?? false} onChange={(e) => updateHouse(house.id, { offerDetails: { ...(house.offerDetails as any), contingencies: { ...(house.offerDetails?.contingencies as any), financing: e.target.checked } } })} className="rounded border-slate-300 bg-white/60 text-fuchsia-500 focus:ring-fuchsia-500" /><span className="text-sm text-slate-700">Financing</span></label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={house.offerDetails?.contingencies?.appraisal ?? false} onChange={(e) => updateHouse(house.id, { offerDetails: { ...(house.offerDetails as any), contingencies: { ...(house.offerDetails?.contingencies as any), appraisal: e.target.checked } } })} className="rounded border-slate-300 bg-white/60 text-fuchsia-500 focus:ring-fuchsia-500" /><span className="text-sm text-slate-700">Appraisal</span></label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={house.offerDetails?.contingencies?.inspection ?? false} onChange={(e) => updateHouse(house.id, { offerDetails: { ...(house.offerDetails || { offerPrice: 0, earnestMoney: 0, sellerConcessions: 0, closingDate: "", expirationDate: "" }), contingencies: { ...(house.offerDetails?.contingencies || { financing: false, appraisal: false }), inspection: e.target.checked } } })} className="rounded border-slate-300 bg-white/60 text-fuchsia-500 focus:ring-fuchsia-500" /><span className="text-sm text-slate-700">Inspection</span></label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={house.offerDetails?.contingencies?.financing ?? false} onChange={(e) => updateHouse(house.id, { offerDetails: { ...(house.offerDetails || { offerPrice: 0, earnestMoney: 0, sellerConcessions: 0, closingDate: "", expirationDate: "" }), contingencies: { ...(house.offerDetails?.contingencies || { inspection: false, appraisal: false }), financing: e.target.checked } } })} className="rounded border-slate-300 bg-white/60 text-fuchsia-500 focus:ring-fuchsia-500" /><span className="text-sm text-slate-700">Financing</span></label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={house.offerDetails?.contingencies?.appraisal ?? false} onChange={(e) => updateHouse(house.id, { offerDetails: { ...(house.offerDetails || { offerPrice: 0, earnestMoney: 0, sellerConcessions: 0, closingDate: "", expirationDate: "" }), contingencies: { ...(house.offerDetails?.contingencies || { inspection: false, financing: false }), appraisal: e.target.checked } } })} className="rounded border-slate-300 bg-white/60 text-fuchsia-500 focus:ring-fuchsia-500" /><span className="text-sm text-slate-700">Appraisal</span></label>
             </div>
           </section>
         )}

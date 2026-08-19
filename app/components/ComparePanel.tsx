@@ -1,4 +1,4 @@
-import { X, Check } from "lucide-react";
+import { X } from "lucide-react";
 import Image from "next/image";
 import type { ScoredHouse } from "../../lib/types";
 

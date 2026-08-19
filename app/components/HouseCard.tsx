@@ -32,9 +32,9 @@ export function HouseCard({ house, score, index, formatMoney, openHouse, toggleF
                #{index + 1}
              </span>
              {onToggleCompare && (
-               <label className="flex items-center justify-center cursor-pointer" onClick={e => e.stopPropagation()}>
-                 <input type="checkbox" checked={isComparing || false} onChange={() => onToggleCompare(house.id)} className="w-6 h-6 rounded border-white/40 bg-white/20 text-fuchsia-500 focus:ring-fuchsia-500 backdrop-blur-md shadow-lg" />
-               </label>
+               <div className="flex items-center justify-center" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()} role="presentation">
+                 <input aria-label={`Select ${house.address} to compare`} type="checkbox" checked={isComparing || false} onChange={() => onToggleCompare(house.id)} className="w-6 h-6 rounded border-white/40 bg-white/20 text-fuchsia-500 focus:ring-fuchsia-500 backdrop-blur-md shadow-lg" />
+               </div>
              )}
           </div>
           <div className="absolute top-4 right-4">

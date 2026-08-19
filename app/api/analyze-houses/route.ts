@@ -1,4 +1,4 @@
-import { evaluateHouseWithLangGraph, type HouseItem, type BuyerProfile } from "../../../lib/agents/houseRankGraph";
+import type { HouseItem, BuyerProfile } from "../../../lib/agents/houseRankGraph";
 
 const OPENAI_URL = "https://api.openai.com/v1/responses";
 const MODEL = "gpt-5-mini";
@@ -185,6 +185,7 @@ export async function POST(request: Request) {
   }
 
   if (payload.useLangGraph) {
+    const { evaluateHouseWithLangGraph } = await import("../../../lib/agents/houseRankGraph");
     const profile = (payload.profile ?? {}) as BuyerProfile;
     const analyses = await Promise.all(
       houses.map((house) => evaluateHouseWithLangGraph(house as unknown as HouseItem, profile))

@@ -1084,6 +1084,7 @@ export default function HomePage() {
     updateHouse(id, { [key]: toNumber(value) } as Partial<House>);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async function attachListingImage(file: File) {
     setDraftError("");
     setEnrichmentState({ status: "loading", message: "Preparing listing screenshot...", sources: [] });
@@ -1106,6 +1107,7 @@ export default function HomePage() {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   function clearListingImage() {
     setListingImage(null);
     setEnrichmentState((current) => (
