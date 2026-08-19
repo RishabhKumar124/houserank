@@ -46,16 +46,18 @@ flowchart TB
 4. Normalizes numeric fields before returning them to the browser.
 5. Prefills only empty draft fields so the buyer reviews the result before saving.
 
-`app/api/analyze-houses/route.ts` performs deep property research:
+`app/api/analyze-houses/route.ts` performs deep property research and multi-agent evaluation:
 
 1. Validates the request and caps the accepted batch size.
-2. Sends buyer and property context to the OpenAI Responses API.
+2. Coordinates evaluation via **LangGraph Multi-Agent Architecture** (`lib/agents/houseRankGraph.ts`):
+   - **Listing Intelligence Agent**: Verifies property facts, school districts, comps, and infrastructure risks.
+   - **Financial Modeling Agent**: Computes true PITI+H carrying costs, tax estimates, and 5-year percentage appreciation trajectory (conservative, mid, optimistic).
+   - **Lifestyle & Tour Fit Agent**: Integrates commute constraints, amenity match, and in-person visit observations (natural light, acoustic noise, layout flow).
+   - **Synthesis Orchestrator**: Aggregates intermediate state representations into calibrated **Personal Fit (0-100)** and **Investment Potential (0-100)** scores.
 3. Enables built-in web search with high context.
-4. Enforces a strict JSON schema for scores, scenarios, risks, and assumptions.
-5. Extracts URL citations and search sources from the API response.
-6. Rejects model-supplied source URLs that were not returned by web search.
-7. Normalizes score bounds, forecast ordering, and fair-housing-sensitive phrasing.
-8. Returns a typed result to the browser for local persistence.
+4. Enforces strict schema constraints for scores, scenarios, risks, and assumptions.
+5. Normalizes score bounds, forecast ordering, and fair-housing-sensitive phrasing.
+6. Returns a typed result to the browser for local persistence.
 
 The `OPENAI_API_KEY` is read only inside route handlers.
 

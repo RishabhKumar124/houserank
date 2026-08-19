@@ -1,3 +1,5 @@
+import { evaluateHouseWithLangGraph, type HouseItem, type BuyerProfile } from "../../../lib/agents/houseRankGraph";
+
 const OPENAI_URL = "https://api.openai.com/v1/responses";
 const MODEL = "gpt-5-mini";
 const MAX_HOUSES = 12;
@@ -7,6 +9,7 @@ export const maxDuration = 120;
 type AnalysisPayload = {
   profile?: Record<string, unknown>;
   houses?: Array<Record<string, unknown>>;
+  useLangGraph?: boolean;
 };
 
 type UrlCitation = {
@@ -179,6 +182,14 @@ export async function POST(request: Request) {
   const validIds = new Set(houses.map((house) => String(house.id ?? "")).filter(Boolean));
   if (!validIds.size) {
     return Response.json({ error: "Each home needs an id." }, { status: 400 });
+  }
+
+  if (payload.useLangGraph) {
+    const profile = (payload.profile ?? {}) as BuyerProfile;
+    const analyses = await Promise.all(
+      houses.map((house) => evaluateHouseWithLangGraph(house as unknown as HouseItem, profile))
+    );
+    return Response.json({ analyses, model: "langgraph-multi-agent", researchedAt: new Date().toISOString() });
   }
 
   const today = new Date().toISOString().slice(0, 10);

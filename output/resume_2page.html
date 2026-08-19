@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rishabh Kumar - Resume (2-Page Technical)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @page {
+            size: letter;
+            margin: 8.5mm 12.5mm 8.5mm 12.5mm;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #0f172a;
+            background: #ffffff;
+            line-height: 1.38;
+            font-size: 8.8pt;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .resume-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            border-bottom: 2.5px solid #0284c7;
+            padding-bottom: 7px;
+            margin-bottom: 9px;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 4px;
+        }
+
+        h1.name {
+            font-size: 22pt;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: #0f172a;
+            line-height: 1;
+        }
+
+        .title-badge {
+            font-size: 8.8pt;
+            font-weight: 700;
+            color: #0369a1;
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            padding: 2.5px 8px;
+            border-radius: 5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 3px;
+        }
+
+        .title-badge i {
+            color: #ea580c;
+            font-size: 8.8pt;
+        }
+
+        .contact-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 8.3pt;
+            color: #1e293b;
+            font-weight: 600;
+            align-items: center;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .contact-item i {
+            color: #ea580c;
+            font-size: 8.2pt;
+        }
+
+        .contact-item a {
+            color: #0284c7;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        /* Sections */
+        section {
+            margin-bottom: 10px;
+            page-break-inside: avoid;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin-bottom: 4px;
+            border-bottom: 1.5px solid #cbd5e1;
+            padding-bottom: 2px;
+        }
+
+        .section-title {
+            font-size: 9.8pt;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #0f172a;
+        }
+
+        .section-icon {
+            color: #ea580c;
+            font-size: 9pt;
+            width: 14px;
+            text-align: center;
+        }
+
+        /* Summary */
+        .summary-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-left: 3.5px solid #0284c7;
+            padding: 5px 9px;
+            border-radius: 0 5px 5px 0;
+            font-size: 8.6pt;
+            color: #1e293b;
+            line-height: 1.4;
+        }
+
+        /* Skills Grid */
+        .skills-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 3px;
+            font-size: 8.3pt;
+        }
+
+        .skill-row {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            line-height: 1.32;
+        }
+
+        .skill-category {
+            font-weight: 800;
+            color: #0f172a;
+            min-width: 140px;
+            flex-shrink: 0;
+        }
+
+        .skill-list {
+            color: #1e293b;
+            font-weight: 500;
+        }
+
+        /* Experience */
+        .exp-item {
+            margin-bottom: 8px;
+            page-break-inside: avoid;
+        }
+
+        .exp-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 1px;
+        }
+
+        .company-name {
+            font-size: 9.8pt;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .location {
+            font-size: 8.2pt;
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .role-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 2.5px;
+        }
+
+        .role-title {
+            font-size: 9pt;
+            font-weight: 700;
+            color: #0369a1;
+        }
+
+        .date-badge {
+            font-size: 7.6pt;
+            font-weight: 700;
+            font-family: 'Fira Code', monospace;
+            color: #0f172a;
+            background: #e2e8f0;
+            border: 1px solid #cbd5e1;
+            padding: 1px 6px;
+            border-radius: 3px;
+        }
+
+        ul.bullet-list {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        ul.bullet-list li {
+            position: relative;
+            padding-left: 12px;
+            margin-bottom: 3px;
+            font-size: 8.4pt;
+            color: #1e293b;
+            line-height: 1.34;
+        }
+
+        ul.bullet-list li::before {
+            content: "▪";
+            position: absolute;
+            left: 0;
+            top: -1px;
+            color: #0284c7;
+            font-size: 8pt;
+            font-weight: bold;
+        }
+
+        ul.bullet-list li strong {
+            color: #0f172a;
+            font-weight: 800;
+        }
+
+        /* Project Cards */
+        .project-item {
+            margin-bottom: 8px;
+            page-break-inside: avoid;
+        }
+
+        .project-title {
+            font-size: 9.4pt;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 1.5px;
+        }
+
+        .project-tech {
+            font-size: 7.8pt;
+            font-family: 'Fira Code', monospace;
+            color: #0284c7;
+            font-weight: 700;
+            margin-bottom: 2.5px;
+        }
+
+        /* Publications */
+        .pub-card {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-left: 3.5px solid #0284c7;
+            border-radius: 4px;
+            padding: 5px 8px;
+            margin-bottom: 5px;
+            page-break-inside: avoid;
+        }
+
+        .pub-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5px;
+        }
+
+        .pub-title {
+            font-size: 8.8pt;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .badge-award {
+            font-size: 7.2pt;
+            font-weight: 800;
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+            padding: 1px 6px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .badge-award i {
+            color: #ea580c;
+        }
+
+        .pub-meta {
+            font-size: 8pt;
+            color: #334155;
+            font-weight: 600;
+            margin-bottom: 1px;
+        }
+
+        .pub-desc {
+            font-size: 8.2pt;
+            color: #1e293b;
+            line-height: 1.32;
+        }
+
+        /* Education & Awards */
+        .edu-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 3px;
+            font-size: 8.5pt;
+        }
+
+        .edu-school {
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .edu-degree {
+            color: #0369a1;
+            font-weight: 700;
+        }
+
+        .award-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .award-item {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            font-size: 8.4pt;
+            margin-bottom: 2px;
+            color: #1e293b;
+        }
+
+        .award-item i {
+            color: #ea580c;
+            font-size: 8.2pt;
+        }
+
+        .award-item strong {
+            color: #0f172a;
+            font-weight: 800;
+        }
+    </style>
+</head>
+<body>
+    <div class="resume-container">
+        <!-- HEADER -->
+        <header>
+            <div class="header-top">
+                <div>
+                    <h1 class="name">RISHABH KUMAR</h1>
+                    <div class="title-badge">
+                        <i class="fa-solid fa-brain"></i>
+                        Senior Data Scientist | AI & Behavioral Simulation | Deep Learning & LLM Calibration
+                    </div>
+                </div>
+                <div class="contact-bar" style="flex-direction: column; align-items: flex-end; gap: 1px;">
+                    <div class="contact-item">
+                        <i class="fa-solid fa-location-dot"></i>
+                        Boston, MA 02472
+                    </div>
+                    <div class="contact-item">
+                        <i class="fa-solid fa-phone"></i>
+                        412-961-2832
+                    </div>
+                </div>
+            </div>
+            <div class="contact-bar">
+                <div class="contact-item">
+                    <i class="fa-solid fa-envelope"></i>
+                    <a href="mailto:rishabh.cmu@gmail.com">rishabh.cmu@gmail.com</a>
+                </div>
+                <div class="contact-item">
+                    <i class="fa-brands fa-linkedin"></i>
+                    <a href="https://linkedin.com/in/rishabhkumar777">linkedin.com/in/rishabhkumar777</a>
+                </div>
+                <div class="contact-item">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    Carnegie Mellon University (CMU)
+                </div>
+            </div>
+        </header>
+
+        <!-- SUMMARY -->
+        <section>
+            <div class="summary-box">
+                Senior Data Scientist and Machine Learning Engineer with <strong>7+ years of experience</strong> building production AI/ML systems across identity, behavioral modeling, audience intelligence, and representation learning. Specialized in <strong>foundation representation learning, transformer architectures (cross-attention, mask-aware), synthetic consumer simulation, and empirical calibration</strong> across <strong>350M+ users</strong>. Published author (<strong>ICML 2025 Best Paper</strong>, NeurIPS 2025 Workshop) on modeling user behavior from adaptive surveys. Proven record modernizing legacy systems and shipping scalable deep learning pipelines on AWS SageMaker and Apache Spark.
+            </div>
+        </section>
+
+        <!-- SKILLS -->
+        <section>
+            <div class="section-header">
+                <i class="fa-solid fa-microchip section-icon"></i>
+                <span class="section-title">Technical Expertise & Competencies</span>
+            </div>
+            <div class="skills-grid">
+                <div class="skill-row">
+                    <span class="skill-category">AI & Deep Learning:</span>
+                    <span class="skill-list">Transformers (Cross-Attention, Mask-Aware, Self-Attention), Representation Learning, Self-Supervised Learning, Autoencoders, Deep Matrix Factorization, Multi-Label Classification, Probabilistic Modeling, PU Learning, Anomaly Detection.</span>
+                </div>
+                <div class="skill-row">
+                    <span class="skill-category">Generative AI & Agents:</span>
+                    <span class="skill-list">Synthetic Audience Simulation, Agent Persona Parameterization, LLM Calibration (Isotonic Regression, Conformal Prediction, Distribution Alignment), LLMOps & Evaluation, In-Context Persona Grounding, LangChain/LangGraph, RAG.</span>
+                </div>
+                <div class="skill-row">
+                    <span class="skill-category">Languages & Tools:</span>
+                    <span class="skill-list">Python, PyTorch, TensorFlow/Keras, Scala, SQL/PostgreSQL, R, Hugging Face, Spark ML, XGBoost, LightGBM, scikit-learn, Optuna, MLflow, TensorBoard, Docker, Git/GitHub, CI/CD.</span>
+                </div>
+                <div class="skill-row">
+                    <span class="skill-category">Big Data & Cloud Systems:</span>
+                    <span class="skill-list">Apache Spark, AWS Ecosystem (SageMaker, EMR, Batch, Step Functions, S3, EC2, Lambda, SQS, RDS), Grafana, PII Masking, Consent-Based Consumer Data Pipelines, Privacy-Preserving Identity Resolution.</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- EXPERIENCE -->
+        <section>
+            <div class="section-header">
+                <i class="fa-solid fa-briefcase section-icon"></i>
+                <span class="section-title">Professional Experience</span>
+            </div>
+
+            <!-- Resonate Sr Data Scientist -->
+            <div class="exp-item">
+                <div class="exp-header">
+                    <span class="company-name">Resonate Networks</span>
+                    <span class="location">Herndon, VA (Hybrid / Boston, MA)</span>
+                </div>
+                <div class="role-header">
+                    <span class="role-title">Senior Data Scientist</span>
+                    <span class="date-badge">Apr 2024 – Present</span>
+                </div>
+                <ul class="bullet-list">
+                    <li><strong>Technical Lead for Keystone:</strong> Served as technical lead for Keystone, coordinating a cross-functional team of 6 across data engineering, product, DS/ML, and executive stakeholders to drive technical direction and execution, moving identity intelligence from transient ID-level behavior toward durable person-level representations.</li>
+                    <li><strong>Self-Supervised Behavioral Autoencoder (BAE):</strong> Developed a self-supervised transformer/autoencoder foundation model deployed on AWS SageMaker, compressing geo, domain, and NLP-derived category signals into <strong>512-dimensional behavioral embeddings</strong> across millions of daily events for <strong>350M+ users</strong>.</li>
+                    <li><strong>Large-Scale Survey Imputation & Persona Reconstruction:</strong> Built a downstream supervised Deep Matrix Factorization model that consumes BAE embeddings to predict <strong>~19K survey attributes (+0.07 mean AUC lift)</strong>, reconstructing sparse adaptive survey responses with population-level calibration across 570K respondents — powering core audience segmentation products and campaign targeting.</li>
+                    <li><strong>ICML 2025 Best Paper Architecture (LANTERN):</strong> Formulated and productionized a modular late-fusion cross-attention neural architecture fusing sparse user survey priors with external behavioral features via learned bimodal gating; achieved <strong>+5 point recall lift</strong> and strong performance on rare consumer preferences, directly preserving population heterogeneity.</li>
+                    <li><strong>Media Bubble & Ideological Cohort Clustering:</strong> Built <em>Media Bubble</em>, an unsupervised behavioral clustering pipeline classifying <strong>~20M devices</strong> into ideological consumption cohorts using real-time behavioral event signals, directly informing campaign creative messaging and voter landscape strategy.</li>
+                </ul>
+            </div>
+
+            <!-- Resonate ML Engineer -->
+            <div class="exp-item">
+                <div class="role-header">
+                    <span class="role-title">ML Engineer → ML Engineer II → Senior ML Engineer</span>
+                    <span class="date-badge">Nov 2019 – Mar 2024</span>
+                </div>
+                <ul class="bullet-list">
+                    <li><strong>Lookalike Audience Discovery (Positive-Unlabeled Learning):</strong> Originated a new lookalike-audience product by adapting an existing pipeline for a new use case, using positive-unlabeled learning to identify high-propensity prospects across <strong>~500M HEM profiles</strong>; outperformed production in <strong>~90% of evaluated audiences</strong> on recall-lift and cumulative-gain metrics.</li>
+                    <li><strong>Distributed Spark/Scala NLP Pipeline Modernization:</strong> Migrated a legacy MapReduce NLP pipeline to a distributed Apache Spark/Scala architecture processing millions of daily internet events; reduced compute costs by <strong>~35%</strong> and accelerated processing runtime by <strong>~2.8x</strong>.</li>
+                    <li><strong>Large-Scale Production Orchestration:</strong> Streamlined and productionized automated training, inference, and monitoring workflows across AWS SageMaker, EMR, AWS Batch, S3, Step Functions, and SQS for <strong>300M+ active user profiles</strong> across ~1,800 XGBoost models.</li>
+                </ul>
+            </div>
+
+            <!-- HiLabs -->
+            <div class="exp-item">
+                <div class="exp-header">
+                    <span class="company-name">HiLabs Inc.</span>
+                    <span class="location">Germantown, MD</span>
+                </div>
+                <div class="role-header">
+                    <span class="role-title">Data Scientist</span>
+                    <span class="date-badge">Mar 2019 – Oct 2019</span>
+                </div>
+                <ul class="bullet-list">
+                    <li>Developed risk adjustment and anomaly detection products for healthcare data using frequent-pattern mining on <strong>~3.5B records</strong>, translating high-dimensional data into strategic insights and client-facing recommendations while working directly with executive leadership.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- PERSONAL AI PROJECTS -->
+        <section style="page-break-before: always; break-before: page;">
+            <div class="section-header">
+                <i class="fa-solid fa-laptop-code section-icon"></i>
+                <span class="section-title">Personal AI Projects</span>
+            </div>
+
+            <div class="project-item">
+                <div class="project-title">HouseRank — Multi-Agent AI Real Estate Decision & Ranking Platform</div>
+                <div class="project-tech">Next.js • TypeScript • Multi-Agent Architecture (LangGraph) • OpenAI API • Framer Motion</div>
+                <ul class="bullet-list">
+                    <li>Architected a multi-agent evaluation pipeline coordinating specialized agents (Listing Intelligence, Financial/Investment Modeling, and Lifestyle Fit) with a synthesis evaluator to score properties across <strong>Personal Fit</strong> and <strong>Investment Potential</strong> (PITI+H true affordability & equity growth).</li>
+                    <li>Built an interactive in-person tour module enabling buyers to log and weight qualitative on-site observations (natural lighting, acoustic/noise levels, layout flow) that trigger dynamic agent re-scoring across aggregate rankings.</li>
+                </ul>
+            </div>
+
+            <div class="project-item">
+                <div class="project-title">Siyu Chef — Multimodal AI Baby Food Recommendation & Grocery Fulfillment (Android Beta)</div>
+                <div class="project-tech">Android • Python FastAPI • Multimodal Vision • SQLite Caching • Amazon PA-API</div>
+                <ul class="bullet-list">
+                    <li>Developed an Android app (in beta) generating stage-appropriate, nutritionally balanced infant meal recommendations personalized to developmental age, nutritional requirements, and <strong>strict allergen/dietary profiles</strong>.</li>
+                    <li>Built a multimodal AI vision scanner that detects on-hand fridge/pantry ingredients to suggest instant recipes, paired with a FastAPI/SQLite backend powering automated <strong>1-click Amazon Cart grocery fulfillment</strong> via PA-API.</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- PUBLICATIONS -->
+        <section>
+            <div class="section-header">
+                <i class="fa-solid fa-book-bookmark section-icon"></i>
+                <span class="section-title">Publications</span>
+            </div>
+            
+            <div class="pub-card">
+                <div class="pub-header">
+                    <span class="pub-title">Modeling User Behavior from Adaptive Surveys with Supplemental Context</span>
+                    <span class="badge-award">
+                        <i class="fa-solid fa-trophy"></i> Best Paper Award
+                    </span>
+                </div>
+                <div class="pub-meta">Aman Shukla, Daniel Patrick Scantlebury, Rishabh Kumar — <strong>ICML 2025 New in ML Workshop</strong> (arXiv:2507.20919)</div>
+                <div class="pub-desc">Introduced <strong>LANTERN</strong>: a late-fusion cross-attention transformer framework with learned bimodal gating that anchors on sparse survey ground truth while selectively querying external behavioral context to recover long-tail user intent and preserve population heterogeneity.</div>
+            </div>
+
+            <div class="pub-card">
+                <div class="pub-header">
+                    <span class="pub-title">Responsible Imputation of User Behavior Surveys via Mask-Aware Transformers</span>
+                    <span class="date-badge" style="font-size: 7.2pt;">NeurIPS 2025</span>
+                </div>
+                <div class="pub-meta"><strong>NeurIPS 2025 Workshop on Reliable ML from Unreliable Data</strong></div>
+                <div class="pub-desc">Demonstrated robust missing-value reconstruction and uncertainty calibration across non-stationary adaptive questionnaire deployments, maintaining statistical distribution integrity for consumer modeling.</div>
+            </div>
+        </section>
+
+        <!-- EDUCATION -->
+        <section>
+            <div class="section-header">
+                <i class="fa-solid fa-graduation-cap section-icon"></i>
+                <span class="section-title">Education</span>
+            </div>
+            <div class="edu-row">
+                <div>
+                    <span class="edu-school">Carnegie Mellon University (CMU)</span>
+                </div>
+                <div style="font-size: 8pt; color: #1e293b; font-weight: 600;">Pittsburgh, PA | Aug 2017 – Dec 2018</div>
+            </div>
+            <div class="edu-row">
+                <div>
+                    <span class="edu-school">BITS Pilani</span> — <span class="edu-degree">B.E. Chemical Engineering & M.Sc. Biological Sciences (Dual Degree)</span>
+                </div>
+                <div style="font-size: 8pt; color: #1e293b; font-weight: 600;">Pilani, India | Aug 2011 – Jul 2016</div>
+            </div>
+        </section>
+
+        <!-- HONORS & AWARDS -->
+        <section>
+            <div class="section-header">
+                <i class="fa-solid fa-award section-icon"></i>
+                <span class="section-title">Honors & Awards</span>
+            </div>
+            <ul class="award-list">
+                <li class="award-item">
+                    <i class="fa-solid fa-trophy"></i>
+                    <div><strong>Best Paper Award:</strong> ICML 2025 New in ML Workshop (July 2025)</div>
+                </li>
+                <li class="award-item">
+                    <i class="fa-solid fa-medal"></i>
+                    <div><strong>Reed Award Winner:</strong> Best Use of Data Analytics / ML in Online Fundraising (Feb 2026)</div>
+                </li>
+                <li class="award-item">
+                    <i class="fa-solid fa-award"></i>
+                    <div><strong>1st Prize Winner:</strong> Resonate Networks Annual Hackathon (June 2021 & July 2025)</div>
+                </li>
+            </ul>
+        </section>
+    </div>
+</body>
+</html>

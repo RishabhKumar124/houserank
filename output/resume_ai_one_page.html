@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rishabh Kumar - AI/ML Resume One Page</title>
+  <style>
+    @page { size: letter; margin: 8mm 10mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #172033;
+      background: #fff;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 8.15pt;
+      line-height: 1.24;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .page { max-width: 7.9in; margin: 0 auto; }
+    header {
+      border-bottom: 1.8px solid #0b6ea8;
+      padding-bottom: 4px;
+      margin-bottom: 5px;
+    }
+    .top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-end; }
+    h1 { margin: 0; font-size: 21pt; line-height: 0.95; letter-spacing: -0.6px; color: #0b1324; }
+    .headline { margin-top: 2px; font-size: 8.7pt; font-weight: 700; color: #0b6ea8; }
+    .contact { text-align: right; font-size: 7.8pt; color: #344256; line-height: 1.3; white-space: nowrap; }
+    .contact a { color: #0b6ea8; text-decoration: none; }
+    section { margin-bottom: 5px; }
+    h2 {
+      margin: 0 0 3px 0;
+      padding-bottom: 1px;
+      border-bottom: 1px solid #d9e2ec;
+      color: #0b1324;
+      font-size: 8.8pt;
+      line-height: 1.05;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .summary {
+      border-left: 3px solid #0b6ea8;
+      background: #f5f9fc;
+      padding: 4px 6px;
+      color: #26364b;
+    }
+    .skills { display: grid; gap: 1.5px; }
+    .skill-row { display: grid; grid-template-columns: 112px 1fr; gap: 5px; }
+    .label { font-weight: 700; color: #0b1324; }
+    .item { margin-bottom: 4px; }
+    .item-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+    .company { font-weight: 800; color: #0b1324; font-size: 9pt; }
+    .role { color: #0b6ea8; font-weight: 700; }
+    .date { color: #5c697a; font-size: 7.5pt; white-space: nowrap; font-weight: 700; }
+    ul { margin: 2px 0 0 0; padding: 0; list-style: none; }
+    li { position: relative; margin-bottom: 2.4px; padding-left: 9px; }
+    li::before { content: "▪"; position: absolute; left: 0; top: -0.5px; color: #0b6ea8; font-size: 7.6pt; }
+    strong { color: #0b1324; font-weight: 800; }
+    .two-col { display: grid; grid-template-columns: 1fr 0.92fr; gap: 10px; }
+    .compact-line { margin-bottom: 2px; }
+    .project {
+      border: 1px solid #d9e2ec;
+      border-left: 3px solid #0b6ea8;
+      padding: 4px 6px;
+      background: #fbfdff;
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div class="top">
+        <div>
+          <h1>RISHABH KUMAR</h1>
+          <div class="headline">Senior Data Scientist & AI/ML Engineer | Deep Learning, Behavioral Intelligence, LLM Applications</div>
+        </div>
+        <div class="contact">
+          Boston, MA 02472<br>
+          412-961-2832 | <a href="mailto:rishabh.cmu@gmail.com">rishabh.cmu@gmail.com</a><br>
+          <a href="https://linkedin.com/in/rishabhkumar777">linkedin.com/in/rishabhkumar777</a>
+        </div>
+      </div>
+    </header>
+
+    <section>
+      <div class="summary">
+        <strong>Senior Data Scientist and AI/ML Engineer with 7+ years of experience</strong> architecting production deep learning, behavioral intelligence, experimentation, and ML platform workflows across <strong>350M+ users</strong>. Strong background in representation learning, transformers, survey imputation, calibration, AWS/Spark pipelines, and AI-powered product systems with emphasis on reliability, interpretability, and measurable business impact.
+      </div>
+    </section>
+
+    <section>
+      <h2>Technical Expertise</h2>
+      <div class="skills">
+        <div class="skill-row"><span class="label">AI / ML:</span><span>Transformers, cross-attention, representation learning, self-supervised learning, autoencoders, deep matrix factorization, PU learning, XGBoost, LightGBM, anomaly detection, calibration, A/B testing.</span></div>
+        <div class="skill-row"><span class="label">GenAI / LLMOps:</span><span>LLM applications, structured outputs, RAG/agent workflow design, LangChain/LangGraph concepts, MLflow/LangSmith-style tracing/evals, prompt/versioning, cost/latency/reliability evaluation.</span></div>
+        <div class="skill-row"><span class="label">Engineering:</span><span>Python, PyTorch, TensorFlow/Keras, Scala, SQL, Spark, AWS SageMaker, EMR, Step Functions, S3, Lambda, SQS, Docker, Git/GitHub, CI/CD.</span></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Professional Experience</h2>
+      <div class="item">
+        <div class="item-head"><span><span class="company">Resonate Networks</span> | <span class="role">Senior Data Scientist</span></span><span class="date">Apr 2024 - Present</span></div>
+        <ul>
+          <li><strong>Technical Lead for Keystone:</strong> Led technical direction for a person-level behavioral foundation effort, coordinating Data Engineering, ML/DS, and Product to transition legacy ID-level scoring toward unified, privacy-compliant person-level representations.</li>
+          <li><strong>Self-Supervised Behavioral Autoencoder:</strong> Architected and deployed a transformer/autoencoder representation model on AWS SageMaker, producing <strong>512-dimensional behavioral embeddings</strong> learned across millions of daily web/content interactions for <strong>350M+ users</strong>.</li>
+          <li><strong>Survey Imputation & Persona Reconstruction:</strong> Designed a deep matrix factorization and cross-attention downstream system to reconstruct <strong>~19,000 sparse adaptive survey attributes</strong> across 570K respondents, improving mean AUC by <strong>+0.07</strong> with population-level calibration.</li>
+          <li><strong>LANTERN Late-Fusion Architecture:</strong> Formulated and productionized a modular cross-attention architecture fusing sparse survey priors with behavioral features via learned bimodal gating; achieved <strong>+5 point recall lift</strong> and <strong>F1 ~0.86</strong> on rare-preference evaluation segments.</li>
+          <li><strong>Media Bubble:</strong> Built an unsupervised behavioral clustering pipeline classifying <strong>~20M consumer profiles</strong> into ideological consumption cohorts for campaign creative and voter landscape strategy.</li>
+        </ul>
+      </div>
+
+      <div class="item">
+        <div class="item-head"><span><span class="company">Resonate Networks</span> | <span class="role">ML Engineer -> Senior ML Engineer</span></span><span class="date">Nov 2019 - Mar 2024</span></div>
+        <ul>
+          <li><strong>Lookalike Audience Discovery:</strong> Originated and deployed a PU-learning algorithm to identify high-propensity consumer prospects across <strong>~500M HEM profiles</strong>, outperforming production baselines in ~90% of target audiences on recall-lift and cumulative-gain metrics.</li>
+          <li><strong>Spark/Scala NLP Modernization:</strong> Re-engineered legacy MapReduce NLP/text-categorization into distributed Spark/Scala pipelines processing <strong>millions of daily content signals</strong>; reduced compute costs by <strong>~35%</strong> and accelerated runtime by <strong>~2.8x</strong>.</li>
+          <li><strong>Production Orchestration:</strong> Standardized automated training, inference, and drift-monitoring pipelines across AWS SageMaker, EMR, Step Functions, and SQS for <strong>300M+ user profiles</strong> across ~1,800 models.</li>
+        </ul>
+      </div>
+
+      <div class="item">
+        <div class="item-head"><span><span class="company">HiLabs Inc.</span> | <span class="role">Data Scientist</span></span><span class="date">Mar 2019 - Oct 2019</span></div>
+        <ul><li>Developed anomaly detection and risk-adjustment algorithms on <strong>~3.5B healthcare records</strong> using frequent-pattern mining and statistical modeling, translating high-dimensional anomalies into executive recommendations.</li></ul>
+      </div>
+    </section>
+
+    <section class="two-col">
+      <div>
+        <h2>Selected AI Systems Project</h2>
+        <div class="project"><strong>HouseRank:</strong> Built an AI-assisted real estate decision platform using Next.js, OpenAI Responses API, structured outputs, citation handling, screenshot-based listing intake, local-first persistence, automated tests, and Vercel production deployment.</div>
+      </div>
+      <div>
+        <h2>Education & Publications</h2>
+        <div class="compact-line"><strong>Carnegie Mellon University:</strong> M.S., Machine Learning Specialization</div>
+        <div class="compact-line"><strong>BITS Pilani:</strong> B.E. Chemical Engineering & M.Sc. Biological Sciences</div>
+        <div class="compact-line"><strong>ICML 2025 New in ML Workshop:</strong> Best Paper Award, LANTERN adaptive survey modeling.</div>
+        <div class="compact-line"><strong>NeurIPS 2025 Workshop:</strong> Responsible imputation via mask-aware transformers.</div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

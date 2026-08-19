@@ -13,7 +13,7 @@ HouseRank focuses on that decision moment. It gives every home a transparent bas
 | Area | Signal |
 | --- | --- |
 | Product judgment | The app separates deterministic fit, personal buying fit, and investment quality instead of hiding everything behind one generic AI score. |
-| AI system design | GPT is used for researched judgment, not for core app state or baseline scoring. Structured outputs, citations, confidence, assumptions, and fair-housing guardrails are part of the product contract. |
+| AI system design | GPT & **LangGraph Multi-Agent Architecture** coordinate specialized agents (Listing Intelligence, Financial Modeling, and Lifestyle Fit) synthesized into calibrated Personal Fit and Investment Potential scores. Structured outputs, citations, confidence, assumptions, and fair-housing guardrails are part of the product contract. |
 | Frontend craft | The workflow supports profile setup, recommendations, saved homes, visited notes, mobile use during tours, and PWA installation. |
 | Engineering maturity | Next.js 16, React 19, strict TypeScript, API tests, linting, production build checks, CI, Dependabot, security docs, and documented tradeoffs. |
 | Privacy stance | Personal data stays local by default. The API key is server-only, OpenAI calls use `store: false`, and the app does not scrape listing portals. |

@@ -34,6 +34,9 @@
     "screenshots": "node scripts/capture-screenshots.mjs"
   },
   "dependencies": {
+    "@langchain/core": "^1.2.8",
+    "@langchain/langgraph": "^1.4.10",
+    "@langchain/openai": "^1.5.8",
     "clsx": "^2.1.1",
     "framer-motion": "^13.1.0",
     "lucide-react": "^1.31.0",

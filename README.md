@@ -40,7 +40,7 @@ HouseRank keeps that decision legible. It combines a transparent local score, st
 | **Buyer-aware profile** | Turns budget, income, liquidity, family logistics, commute, schools, must-haves, and free-form context into a reusable decision lens. |
 | **AI listing intake** | Paste a listing link/address or attach a Redfin screenshot; server-side GPT prefills visible public property facts for review before saving. |
 | **Transparent baseline score** | Ranks every tracked home using deterministic affordability, property-fit, commute, and visit criteria. The math works without AI. |
-| **Deep GPT research** | Automatically researches each newly saved home, returning a personal buying score, risk-adjusted investment score, five-year value range, confidence, assumptions, risks, and clickable sources. |
+| **Deep GPT & LangGraph research** | Coordinates specialized agents (Listing Intelligence, Financial Modeling, Lifestyle Fit) via **LangGraph** to return a personal buying score, risk-adjusted investment score, five-year value trajectory, confidence, and clickable sources. |
 | **20-factor tour scorecard** | Captures noise, light, smell, layout, stairs, storage, street feel, maintenance signals, and the details that disappear after a busy tour day. |
 | **Local-first privacy** | Buyer profiles, notes, scores, and research results stay in browser storage. JSON import/export provides a portable backup. |
 | **Mobile field workflow** | Installable PWA, share-target support, bottom navigation, and narrow-screen containment make the app usable while touring homes. |

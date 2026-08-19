@@ -68,7 +68,7 @@ export function AddHousePanel({
       <header className="sticky top-0 z-10 flex shrink-0 items-start justify-between border-b border-slate-300/50 bg-white/50 px-4 py-4 sm:px-6 sm:py-5 backdrop-blur-md">
         <div className="min-w-0 pr-4">
           <h2 className="text-lg font-semibold text-slate-900">Add New Home</h2>
-          <p className="text-xs text-slate-500">Paste a listing link or enter the property manually.</p>
+          <p className="text-xs text-slate-500">Paste a listing link, upload a Redfin screenshot, or enter the property manually.</p>
         </div>
         <button type="button" onClick={() => setHousePanel(null)} aria-label="Close add home" className="shrink-0 rounded-lg p-2 text-slate-500 hover:bg-white/60 hover:text-slate-900">
           <X size={19} />
